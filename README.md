@@ -25,7 +25,7 @@ python --version
 Clone this repository and install dependencies:
 ```sh
 git clone https://github.com/DavidMead182/EEETeamProject.git
-cd APP
+cd Team2/APP
 pip install -r requirements.txt
 ```
 
