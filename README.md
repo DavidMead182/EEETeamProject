@@ -24,7 +24,7 @@ python --version
 #### Install Dependencies
 Clone this repository and install dependencies:
 ```sh
-git clone https://github.com/yourusername/yourproject.git
+git clone https://github.com/DavidMead182/EEETeamProject.git
 cd APP
 pip install -r requirements.txt
 ```
