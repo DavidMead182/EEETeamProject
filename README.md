@@ -1,7 +1,7 @@
 # FireFighter Tracker
 Upload your teams files into your teams folder
 
-# Team 1 -
+## Team 1 -
 
 ## Team 2 - App Name: Fire Fighter UAV (This is a temporary name) - Application development and visualising data from sensors
 ### Overview
@@ -39,7 +39,7 @@ python main.py
 This project requires the following:
 - PyQt5
 
-# Team 3 -
+## Team 3 -
 
 
-# Team 4 - 
+## Team 4 - 
