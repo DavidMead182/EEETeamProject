@@ -28,6 +28,7 @@ git clone https://github.com/DavidMead182/EEETeamProject.git
 cd Team2/APP
 pip install -r requirements.txt
 ```
+If a metadata error occurs the app should still run if you run the command below
 
 ### How to run
 To start the application, run:
