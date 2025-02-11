@@ -1,4 +1,5 @@
 # FireFighter Tracker
+Upload your teams files into your teams folder
 
 # Team 1 -
 
