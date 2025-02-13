@@ -17,6 +17,7 @@ TRAIL_SIZE = 10  # Number of steps to keep the trail
 class MainWindow(QMainWindow):
 
     def __init__(self):
+        #print("Log: Application initiation started.")
         super().__init__()
 
         self.setWindowTitle("Firefighter UAV")
@@ -24,19 +25,27 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.stack)
         self.setGeometry(100, 100, 800, 600)
         self.setWindowIcon(QtGui.QIcon("Assets/images/LOGO.png"))
+        print("Log: Window created.")
 
         self.main_page = self.create_main_page()
+        print("Log: Main page created.")
+
         self.page_yes = self.upload_page()
+        print("Log: Upload page created.")
+
         self.page_no = self.create_page("No Page - Manual Setup")
+        print("Log: default page created.")
 
         self.stack.addWidget(self.main_page)
         self.stack.addWidget(self.page_yes)
         self.stack.addWidget(self.page_no)
+        print("Log: Pages added to stack.")
 
         self.apply_stylesheet("style.qss")
         self.showMaximized()
 
     def create_main_page(self):
+        print("Log: Creating main page.")
         page = QWidget()
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignCenter)
@@ -78,6 +87,7 @@ class MainWindow(QMainWindow):
         return page
 
     def upload_page(self):
+        print("Log: Creating upload page.")
         page = QWidget()
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignCenter)
@@ -120,11 +130,13 @@ class MainWindow(QMainWindow):
         return page
 
     def process_image(self):
+        print("Log: switching to minimap page")
         self.page_processed = self.create_processed_page(self.upload_Image.pixmap())
         self.stack.addWidget(self.page_processed)
         self.stack.setCurrentWidget(self.page_processed)
 
     def create_processed_page(self, pixmap):
+        print("Log: Creating minimap page.")
         page = QWidget()
         layout = QHBoxLayout()
         layout.setAlignment(Qt.AlignLeft)
@@ -212,6 +224,7 @@ class MainWindow(QMainWindow):
         return page
 
     def create_page(self, text):
+        print("Log: Creating default page.")
         page = QWidget()
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignCenter)
@@ -234,17 +247,22 @@ class MainWindow(QMainWindow):
         if file_name:
             pixmap = QtGui.QPixmap(file_name)
             self.upload_Image.setPixmap(pixmap.scaled(self.upload_Image.size(), QtCore.Qt.KeepAspectRatio))
+            print("Log: Image uploaded.")
             self.process_button.setVisible(True)
+            print("Log: Create minimap Button visible.")
+
 
     def apply_stylesheet(self, filename):
         try:
             with open(filename, "r") as f:
                 self.setStyleSheet(f.read())
+            print("Log: Stylesheet applied.")
         except FileNotFoundError:
-            print("Stylesheet not found. Using default styles.")
+            print("Log: Stylesheet not found. Using default styles.")
     
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    print("Log: app created")
     window = MainWindow()
     window.showMaximized()
     sys.exit(app.exec_())
