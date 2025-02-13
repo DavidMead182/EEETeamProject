@@ -119,12 +119,17 @@ class MainWindow(QMainWindow):
         self.process_button.setVisible(False)
         self.process_button.clicked.connect(self.process_image)
 
+        btn_back = QPushButton("Back")
+        btn_back.setObjectName("btnYes")
+        btn_back.clicked.connect(lambda: self.stack.setCurrentWidget(self.main_page))
+
         layout.addWidget(logo)
         layout.addWidget(title)
         layout.addWidget(subtitle)
         layout.addWidget(btn_upload)
         layout.addWidget(self.upload_Image)
         layout.addWidget(self.process_button)
+        layout.addWidget(btn_back)
 
         page.setLayout(layout)
         return page
@@ -193,7 +198,6 @@ class MainWindow(QMainWindow):
 
         recreate_button = QPushButton("Recreate Layout")
         recreate_button.setObjectName("btnYes")
-        recreate_button.setFixedSize(200, 40)
         #recreate_button.clicked.connect()
 
         horizontal_line = QLabel()
@@ -201,9 +205,14 @@ class MainWindow(QMainWindow):
         horizontal_line.setObjectName("horizontalLine")
         horizontal_line.setAlignment(Qt.AlignCenter)
 
+        btn_back = QPushButton("Back")
+        btn_back.setObjectName("btnYes")
+        btn_back.clicked.connect(lambda: self.stack.setCurrentWidget(self.page_yes))
+
         left_layout.addWidget(horizontal_line,alignment= Qt.AlignCenter)
 
         left_layout.addWidget(recreate_button,alignment= Qt.AlignCenter)
+        left_layout.addWidget(btn_back,alignment= Qt.AlignCenter)
 
         # Adjust the height to the remaining height and width based on the aspect ratio of the image
         remaining_height = self.height()
