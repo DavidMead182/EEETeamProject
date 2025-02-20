@@ -135,7 +135,7 @@ class MainWindow(QMainWindow):
         self.com_port_dropdown.setObjectName("comPortDropdown")
         self.com_port_dropdown.setEditable(False)
         self.upload_Image.setFixedHeight(100)
-
+        self.com_port_dropdown.activated.connect(self.update_selected_com_port)
 
         layout.addWidget(logo)
         layout.addWidget(title)
@@ -257,12 +257,17 @@ class MainWindow(QMainWindow):
                 self.com_port_dropdown.addItem(f"Port: {port.device}, Port Description: {port.description}")
         else:
             self.com_port_dropdown.addItem("No COM ports found")
+    
+    def update_selected_com_port(self):
+        selected_index = self.com_port_dropdown.currentIndex()
+        if selected_index >= 0:  
+            COM_Port = serial.tools.list_ports.comports()[selected_index]
 
     def scan_com_port(self):
         self.update_dropdown()
         ports = serial.tools.list_ports.comports()
         identifier = "USB Serial Device"
-        found_ports = [port.device for port in ports if identifier in port.description]
+        found_ports = [port for port in ports if identifier in port.description]
         
         msg = QMessageBox()
         msg.setWindowTitle("COM Port Scan")
@@ -270,6 +275,7 @@ class MainWindow(QMainWindow):
         if found_ports:
             COM_Port = found_ports[0]
             msg.setIcon(QMessageBox.Information)
+            found_ports = [found_port.device for found_port in found_ports]
             found_ports_str = ",".join(found_ports)  
             msg.setText(f"✅ Found Device(s): {found_ports_str}🔹 Selecting COM Port: {COM_Port}")
         else:
