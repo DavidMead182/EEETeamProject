@@ -14,7 +14,7 @@ from minimap import FloorPlan
 TILE_SIZE = 1  # Size of each tile
 PLAYER_SIZE = 10  # Size of red dot
 TRAIL_SIZE = 10  # Number of steps to keep the trail
-
+COM_Port = None # Initially set the com port
 
 class MainWindow(QMainWindow):
 
@@ -125,7 +125,7 @@ class MainWindow(QMainWindow):
         btn_back.setObjectName("btnYes")
         btn_back.clicked.connect(lambda: self.stack.setCurrentWidget(self.main_page))
 
-        btn_test_com = QPushButton("Test COM Port")
+        btn_test_com = QPushButton("Scan COM Port")
         btn_test_com.setObjectName("btnYes")
         btn_test_com.clicked.connect(self.test_com_port)
 
@@ -244,21 +244,20 @@ class MainWindow(QMainWindow):
         ports = serial.tools.list_ports.comports()
         identifier = "USB Serial Device"
         found_ports = [port.device for port in ports if identifier in port.description]
-
+        
         msg = QMessageBox()
-        msg.setWindowTitle("COM Port Test")
+        msg.setWindowTitle("COM Port Scan")
 
         if found_ports:
+            COM_Port = found_ports[0]
             msg.setIcon(QMessageBox.Information)
-            msg.setText(f"✅ Found Device(s):\n" + "\n".join(found_ports))
+            found_ports_str = ",".join(found_ports)  
+            msg.setText(f"✅ Found Device(s): {found_ports_str}🔹 Selecting COM Port: {COM_Port}")
         else:
             msg.setIcon(QMessageBox.Warning)
             msg.setText("❌ No device found.")
 
-        msg.setText(f"<h3>{msg.text()}</h3>")  
-
-        screen = QApplication.primaryScreen().geometry()
-        msg.resize(screen.width() // 3, screen.height() // 4)  
+        msg.setText(f"<h3>{msg.text()}</h3>")   
 
         msg.exec_()
 
