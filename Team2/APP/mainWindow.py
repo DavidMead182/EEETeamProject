@@ -5,6 +5,8 @@ from PyQt5.QtCore import Qt
 import PyQt5.QtCore as QtCore
 import PyQt5.QtGui as QtGui
 import PyQt5.QtWidgets as QtWidgets
+import serial.tools.list_ports
+from PyQt5.QtWidgets import QMessageBox
 
 from minimap import FloorPlan
 
@@ -123,12 +125,18 @@ class MainWindow(QMainWindow):
         btn_back.setObjectName("btnYes")
         btn_back.clicked.connect(lambda: self.stack.setCurrentWidget(self.main_page))
 
+        btn_test_com = QPushButton("Test COM Port")
+        btn_test_com.setObjectName("btnYes")
+        btn_test_com.clicked.connect(self.test_com_port)
+
+
         layout.addWidget(logo)
         layout.addWidget(title)
         layout.addWidget(subtitle)
         layout.addWidget(btn_upload)
+        layout.addWidget(btn_test_com)  
         layout.addWidget(self.upload_Image)
-        layout.addWidget(self.process_button)
+        layout.addWidget(self.process_button) 
         layout.addWidget(btn_back)
 
         page.setLayout(layout)
@@ -231,6 +239,29 @@ class MainWindow(QMainWindow):
 
         page.setLayout(layout)
         return page
+    
+    def test_com_port(self):
+        ports = serial.tools.list_ports.comports()
+        identifier = "USB Serial Device"
+        found_ports = [port.device for port in ports if identifier in port.description]
+
+        msg = QMessageBox()
+        msg.setWindowTitle("COM Port Test")
+
+        if found_ports:
+            msg.setIcon(QMessageBox.Information)
+            msg.setText(f"✅ Found Device(s):\n" + "\n".join(found_ports))
+        else:
+            msg.setIcon(QMessageBox.Warning)
+            msg.setText("❌ No device found.")
+
+        msg.setText(f"<h3>{msg.text()}</h3>")  
+
+        screen = QApplication.primaryScreen().geometry()
+        msg.resize(screen.width() // 3, screen.height() // 4)  
+
+        msg.exec_()
+
 
     def create_page(self, text):
         print("Log: Creating default page.")
@@ -260,6 +291,7 @@ class MainWindow(QMainWindow):
             self.process_button.setVisible(True)
             print("Log: Create minimap Button visible.")
 
+    
 
     def apply_stylesheet(self, filename):
         try:
