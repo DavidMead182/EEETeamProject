@@ -5,6 +5,10 @@ from PyQt5.QtCore import Qt
 import PyQt5.QtCore as QtCore
 import PyQt5.QtGui as QtGui
 import PyQt5.QtWidgets as QtWidgets
+import serial.tools.list_ports
+from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtWidgets import QComboBox
+
 
 from minimap import FloorPlan
 
@@ -12,7 +16,7 @@ from minimap import FloorPlan
 TILE_SIZE = 1  # Size of each tile
 PLAYER_SIZE = 10  # Size of red dot
 TRAIL_SIZE = 10  # Number of steps to keep the trail
-
+COM_Port = None # Initially set the com port
 
 class MainWindow(QMainWindow):
 
@@ -123,12 +127,24 @@ class MainWindow(QMainWindow):
         btn_back.setObjectName("btnYes")
         btn_back.clicked.connect(lambda: self.stack.setCurrentWidget(self.main_page))
 
+        btn_scan_com = QPushButton("Scan COM Port")
+        btn_scan_com.setObjectName("btnYes")
+        btn_scan_com.clicked.connect(self.scan_com_port)
+
+        self.com_port_dropdown = QComboBox()
+        self.com_port_dropdown.setObjectName("comPortDropdown")
+        self.com_port_dropdown.setEditable(False)
+        self.upload_Image.setFixedHeight(100)
+        self.com_port_dropdown.activated.connect(self.update_selected_com_port)
+
         layout.addWidget(logo)
         layout.addWidget(title)
         layout.addWidget(subtitle)
         layout.addWidget(btn_upload)
+        layout.addWidget(btn_scan_com)
+        layout.addWidget(self.com_port_dropdown)  
         layout.addWidget(self.upload_Image)
-        layout.addWidget(self.process_button)
+        layout.addWidget(self.process_button) 
         layout.addWidget(btn_back)
 
         page.setLayout(layout)
@@ -231,6 +247,46 @@ class MainWindow(QMainWindow):
 
         page.setLayout(layout)
         return page
+    
+    def update_dropdown(self):
+        ports = serial.tools.list_ports.comports()
+        self.com_port_dropdown.clear()
+        if ports:
+            for port in ports:
+                self.com_port_dropdown.addItem(f"Port: {port.device}, Port Description: {port.description}")
+    
+    def update_selected_com_port(self):
+        selected_index = self.com_port_dropdown.currentIndex()
+        if selected_index >= 0:  
+            COM_Port = serial.tools.list_ports.comports()[selected_index]
+
+    def scan_com_port(self):
+        self.update_dropdown()
+        ports = serial.tools.list_ports.comports()
+        if ports:
+            identifier = "USB Serial Device"
+            found_ports = [port for port in ports if identifier in port.description]
+            
+            msg = QMessageBox()
+            msg.setWindowTitle("COM Port Scan")
+
+            if found_ports:
+                COM_Port = found_ports[0]
+                msg.setIcon(QMessageBox.Information)
+                found_ports = [found_port.device for found_port in found_ports]
+                found_ports_str = ",".join(found_ports)  
+                msg.setText(f"✅ Found Device(s): {found_ports_str}🔹 Selecting COM Port: {COM_Port}")
+            else:
+                msg.setIcon(QMessageBox.Warning)
+                msg.setText("❌ Desired device not detected.")
+        else:
+            msg.setIcon(QMessageBox.Warning)
+            msg.setText("❌ No devices detected.")
+
+        msg.setText(f"<h3>{msg.text()}</h3>")   
+
+        msg.exec_()
+
 
     def create_page(self, text):
         print("Log: Creating default page.")
@@ -260,6 +316,7 @@ class MainWindow(QMainWindow):
             self.process_button.setVisible(True)
             print("Log: Create minimap Button visible.")
 
+    
 
     def apply_stylesheet(self, filename):
         try:
