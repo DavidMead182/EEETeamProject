@@ -82,10 +82,28 @@ class MainWindow(QMainWindow):
         btn_layout.addWidget(btn_yes)
         btn_layout.addWidget(btn_no)
 
+        btn_scan_com = QPushButton("Scan USB Port For Device")
+        btn_scan_com.setObjectName("btnYes")
+        btn_scan_com.setFixedWidth(350)
+        btn_scan_com.setFixedHeight(40)
+        btn_scan_com.clicked.connect(self.scan_com_port)
+
+        self.com_port_dropdown = QComboBox()
+        self.com_port_dropdown.setObjectName("comPortDropdown")
+        self.com_port_dropdown.setEditable(False)
+        self.com_port_dropdown.activated.connect(self.update_selected_com_port)
+        self.com_port_dropdown.setFixedWidth(350)
+        self.com_port_dropdown.setFixedHeight(40)
+
+
+
         layout.addWidget(logo)
         layout.addWidget(title)
         layout.addWidget(subtitle)
         layout.addLayout(btn_layout)
+
+        layout.addWidget(btn_scan_com, alignment=Qt.AlignCenter)
+        layout.addWidget(self.com_port_dropdown, alignment=Qt.AlignCenter)
 
         page.setLayout(layout)
         return page
@@ -127,22 +145,10 @@ class MainWindow(QMainWindow):
         btn_back.setObjectName("btnYes")
         btn_back.clicked.connect(lambda: self.stack.setCurrentWidget(self.main_page))
 
-        btn_scan_com = QPushButton("Scan COM Port")
-        btn_scan_com.setObjectName("btnYes")
-        btn_scan_com.clicked.connect(self.scan_com_port)
-
-        self.com_port_dropdown = QComboBox()
-        self.com_port_dropdown.setObjectName("comPortDropdown")
-        self.com_port_dropdown.setEditable(False)
-        self.upload_Image.setFixedHeight(100)
-        self.com_port_dropdown.activated.connect(self.update_selected_com_port)
-
         layout.addWidget(logo)
         layout.addWidget(title)
         layout.addWidget(subtitle)
         layout.addWidget(btn_upload)
-        layout.addWidget(btn_scan_com)
-        layout.addWidget(self.com_port_dropdown)  
         layout.addWidget(self.upload_Image)
         layout.addWidget(self.process_button) 
         layout.addWidget(btn_back)
