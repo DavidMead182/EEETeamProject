@@ -251,12 +251,9 @@ class MainWindow(QMainWindow):
     def update_dropdown(self):
         ports = serial.tools.list_ports.comports()
         self.com_port_dropdown.clear()
-        
         if ports:
             for port in ports:
                 self.com_port_dropdown.addItem(f"Port: {port.device}, Port Description: {port.description}")
-        else:
-            self.com_port_dropdown.addItem("No COM ports found")
     
     def update_selected_com_port(self):
         selected_index = self.com_port_dropdown.currentIndex()
@@ -266,21 +263,25 @@ class MainWindow(QMainWindow):
     def scan_com_port(self):
         self.update_dropdown()
         ports = serial.tools.list_ports.comports()
-        identifier = "USB Serial Device"
-        found_ports = [port for port in ports if identifier in port.description]
-        
-        msg = QMessageBox()
-        msg.setWindowTitle("COM Port Scan")
+        if ports:
+            identifier = "USB Serial Device"
+            found_ports = [port for port in ports if identifier in port.description]
+            
+            msg = QMessageBox()
+            msg.setWindowTitle("COM Port Scan")
 
-        if found_ports:
-            COM_Port = found_ports[0]
-            msg.setIcon(QMessageBox.Information)
-            found_ports = [found_port.device for found_port in found_ports]
-            found_ports_str = ",".join(found_ports)  
-            msg.setText(f"✅ Found Device(s): {found_ports_str}🔹 Selecting COM Port: {COM_Port}")
+            if found_ports:
+                COM_Port = found_ports[0]
+                msg.setIcon(QMessageBox.Information)
+                found_ports = [found_port.device for found_port in found_ports]
+                found_ports_str = ",".join(found_ports)  
+                msg.setText(f"✅ Found Device(s): {found_ports_str}🔹 Selecting COM Port: {COM_Port}")
+            else:
+                msg.setIcon(QMessageBox.Warning)
+                msg.setText("❌ Desired device not detected.")
         else:
             msg.setIcon(QMessageBox.Warning)
-            msg.setText("❌ No device found.")
+            msg.setText("❌ No devices detected.")
 
         msg.setText(f"<h3>{msg.text()}</h3>")   
 
