@@ -7,6 +7,8 @@ import PyQt5.QtGui as QtGui
 import PyQt5.QtWidgets as QtWidgets
 import serial.tools.list_ports
 from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtWidgets import QComboBox
+
 
 from minimap import FloorPlan
 
@@ -125,16 +127,22 @@ class MainWindow(QMainWindow):
         btn_back.setObjectName("btnYes")
         btn_back.clicked.connect(lambda: self.stack.setCurrentWidget(self.main_page))
 
-        btn_test_com = QPushButton("Scan COM Port")
-        btn_test_com.setObjectName("btnYes")
-        btn_test_com.clicked.connect(self.test_com_port)
+        btn_scan_com = QPushButton("Scan COM Port")
+        btn_scan_com.setObjectName("btnYes")
+        btn_scan_com.clicked.connect(self.scan_com_port)
+
+        self.com_port_dropdown = QComboBox()
+        self.com_port_dropdown.setObjectName("comPortDropdown")
+        self.com_port_dropdown.setEditable(False)
+        self.upload_Image.setFixedHeight(100)
 
 
         layout.addWidget(logo)
         layout.addWidget(title)
         layout.addWidget(subtitle)
         layout.addWidget(btn_upload)
-        layout.addWidget(btn_test_com)  
+        layout.addWidget(btn_scan_com)
+        layout.addWidget(self.com_port_dropdown)  
         layout.addWidget(self.upload_Image)
         layout.addWidget(self.process_button) 
         layout.addWidget(btn_back)
@@ -240,7 +248,18 @@ class MainWindow(QMainWindow):
         page.setLayout(layout)
         return page
     
-    def test_com_port(self):
+    def update_dropdown(self):
+        ports = serial.tools.list_ports.comports()
+        self.com_port_dropdown.clear()
+        
+        if ports:
+            for port in ports:
+                self.com_port_dropdown.addItem(f"Port: {port.device}, Port Description: {port.description}")
+        else:
+            self.com_port_dropdown.addItem("No COM ports found")
+
+    def scan_com_port(self):
+        self.update_dropdown()
         ports = serial.tools.list_ports.comports()
         identifier = "USB Serial Device"
         found_ports = [port.device for port in ports if identifier in port.description]
