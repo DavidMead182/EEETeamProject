@@ -33,7 +33,8 @@ If a metadata error occurs the app should still run if you run the command below
 ### How to run
 To start the application, run:
 ```sh
-python src/main.py
+cd src
+python main.py
 ```
 
 ## Team 3 -
