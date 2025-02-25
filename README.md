@@ -12,8 +12,9 @@ A desktop application built using **PyQt5** that will track the firefighters thr
 ![image](https://github.com/user-attachments/assets/966f8bf3-bbc2-4fae-b93b-d344832e8faa)
 #### Upload Image page
 ![image](https://github.com/user-attachments/assets/61c7a7df-c89f-4b2a-be7f-2904ac7d8f20)
-#### Current minimap page - this will change
-![image](https://github.com/user-attachments/assets/dfda081f-8ab5-4c53-ae6f-5ee133135ded)
+#### Current Wireframe for minimap page - this will change
+![image](https://github.com/user-attachments/assets/308fdc34-2a94-4434-8d7f-02e786dbf0e5)
+
 
 ### Installation
 #### Prerequisites
