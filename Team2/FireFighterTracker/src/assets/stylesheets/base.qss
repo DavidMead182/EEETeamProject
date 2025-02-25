@@ -2,6 +2,10 @@ QStackedWidget {
     background-color: #ffffff;
 }
 
+QVBoxLayout {
+    background-color: #ffffff;
+}
+
 QPushButton {
     font-size: 16px;
     width: 150px;

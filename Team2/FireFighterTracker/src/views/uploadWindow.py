@@ -1,33 +1,18 @@
-import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QVBoxLayout, QWidget, QStackedWidget, QHBoxLayout, QFileDialog, QSlider, QLineEdit, QFrame
+from PyQt5.QtWidgets import QWidget, QPushButton, QFileDialog, QVBoxLayout, QLabel
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt
-import PyQt5.QtCore as QtCore
-import PyQt5.QtGui as QtGui
-import serial.tools.list_ports
-from PyQt5.QtWidgets import QMessageBox
-from PyQt5.QtWidgets import QComboBox
 
 
-from controllers.minimap import FloorPlan
+from views.minimapWindow import MinimapWindow
 from widgets.titleWidget import TitleWidget
-
-
-
-TILE_SIZE = 1  # Size of each tile
-PLAYER_SIZE = 10  # Size of red dot
-TRAIL_SIZE = 10  # Number of steps to keep the trail
-COM_Port = None # Initially set the com port
 
 class UploadWindow(QWidget):
     def __init__(self, stack):
         super().__init__()
-        self.stack = stack  # Store the reference to the stack
-        self.setWindowTitle("Firefighter UAV - Upload Page")
-        self.setWindowIcon(QtGui.QIcon("assets/icons/LOGO.png"))
+        self.stack = stack
+        self.filePath = None  # Initialize filePath to None
         self.initUI()
         self.apply_stylesheet("assets/stylesheets/base.qss")
-        self.showMaximized()
 
     def initUI(self):
         layout = QVBoxLayout()
@@ -37,7 +22,7 @@ class UploadWindow(QWidget):
 
         btn_upload = QPushButton("Upload")
         btn_upload.setObjectName("btnYes")
-        btn_upload.clicked.connect(self.upload_image)
+        btn_upload.clicked.connect(self.open_file_dialog)
 
         self.upload_Image = QLabel("")
         self.upload_Image.setFixedSize(700, 400)
@@ -60,25 +45,35 @@ class UploadWindow(QWidget):
 
         self.setLayout(layout)
 
-    def upload_image(self):
+    def open_file_dialog(self):
+        # Open a file dialog to select an image file
         options = QFileDialog.Options()
-        file_name, _ = QFileDialog.getOpenFileName(self, "QFileDialog.getOpenFileName()", "", "Images (*.png *.xpm *.jpg *.jpeg *.bmp)", options=options)
+        file_name, _ = QFileDialog.getOpenFileName(
+            self, "Open Image File", "", "Images (*.png *.jpg *.bmp *jpeg)", options=options
+        )
         if file_name:
-            pixmap = QtGui.QPixmap(file_name)
-            self.upload_Image.setPixmap(pixmap.scaled(self.upload_Image.size(), QtCore.Qt.KeepAspectRatio))
+            self.filePath = file_name  # Set the filePath attribute
+            # Load the selected image into the QLabel
+            self.upload_Image.setPixmap(QPixmap(self.filePath))
+            self.upload_Image.setText("")  # Clear the placeholder text
             self.process_button.setVisible(True)
 
     def process_image(self):
-        from views.minimapWindow import MinimapWindow
-        # Create a new MinimapWindow with the uploaded image
-        self.minimap_page = MinimapWindow(self.upload_Image.pixmap(), self.stack)
-        self.stack.addWidget(self.minimap_page)  # Add the new page to the stack
-        self.stack.setCurrentWidget(self.minimap_page)  # Navigate to the new page
+        # Check if a file has been selected
+        if not hasattr(self, 'filePath') or self.filePath is None:
+            print("No file has been selected.")
+            return
+
+        # Process the image (example: pass it to the MinimapWindow)
+        self.minimap_page = MinimapWindow(self.upload_Image.pixmap(), self.filePath, self.stack)
+        # Optionally, switch to the minimap page in the stack
+        self.stack.addWidget(self.minimap_page)
+        self.stack.setCurrentWidget(self.minimap_page)
 
     def apply_stylesheet(self, filename):
         try:
             with open(filename, "r") as f:
                 self.setStyleSheet(f.read())
-            print("Log: Stylesheet applied.")
+            print("Log: Upload Window Stylesheet applied.")
         except FileNotFoundError:
             print("Log: Stylesheet not found. Using default styles.")

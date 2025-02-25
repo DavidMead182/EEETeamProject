@@ -10,7 +10,9 @@ class NoWindow(QWidget):
         self.setWindowTitle("Firefighter UAV - No Page")
         self.setGeometry(100, 100, 800, 600)
         self.setWindowIcon(QtGui.QIcon("assets/icons/LOGO.png"))
+        print("Log: Initialising UI.")
         self.initUI(text)
+        print("Log: Applying stylesheet.")
         self.apply_stylesheet("assets/stylesheets/base.qss")
 
     def initUI(self, text):
@@ -27,11 +29,12 @@ class NoWindow(QWidget):
         layout.addWidget(btn_back)
 
         self.setLayout(layout)
+        print("Log: UI initialised with text:", text)
 
     def apply_stylesheet(self, filename):
         try:
             with open(filename, "r") as f:
                 self.setStyleSheet(f.read())
-            print("Log: Stylesheet applied.")
+            print("Log: No Window Stylesheet applied.")
         except FileNotFoundError:
             print("Log: Stylesheet not found. Using default styles.")

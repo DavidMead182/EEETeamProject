@@ -6,11 +6,12 @@ from controllers.minimap import FloorPlan
 import PyQt5.QtGui as QtGui
 
 class MinimapWindow(QWidget):
-    def __init__(self, pixmap, stack):
+    def __init__(self, pixmap, filepath, stack):
         super().__init__()
         self.stack = stack  # Store the reference to the stack
         self.setWindowTitle("Firefighter UAV - Processed Page")
         self.setWindowIcon(QtGui.QIcon("assets/icons/LOGO.png"))
+        self.filepath = filepath
         self.initUI(pixmap)
         self.apply_stylesheet("assets/stylesheets/base.qss")
 
@@ -86,7 +87,7 @@ class MinimapWindow(QWidget):
         aspect_ratio = pixmap.width() / pixmap.height()
         adjusted_width = int(remaining_height * aspect_ratio)
 
-        self.floor_plan_view = FloorPlan(floor_plan_path="Assets/images/floorplan.jpeg", width=adjusted_width, height=remaining_height, blur_effect=35)
+        self.floor_plan_view = FloorPlan(self.filepath, width=adjusted_width, height=remaining_height, blur_effect=35)
 
         right_layout = QVBoxLayout()
         right_layout.setAlignment(Qt.AlignCenter)
