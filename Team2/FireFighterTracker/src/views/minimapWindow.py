@@ -1,7 +1,8 @@
-from PyQt5.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton
-from PyQt5.QtGui import QPixmap
+from PyQt5.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QSpacerItem, QSizePolicy
+from PyQt5.QtGui import QPixmap, QFont
 from PyQt5.QtCore import Qt
 from controllers.minimap import FloorPlan
+from widgets.titleWidget import TitleWidget
 
 import PyQt5.QtGui as QtGui
 
@@ -22,24 +23,14 @@ class MinimapWindow(QWidget):
         left_layout = QVBoxLayout()
         left_layout.setAlignment(Qt.AlignTop)
 
-        logo = QLabel()
-        logo.setObjectName("logo")
-        pixmap_logo = QPixmap("assets/images/SFRS Logo.png")
-        logo.setPixmap(pixmap_logo)
-        logo.setAlignment(Qt.AlignCenter)
+        titleCard = TitleWidget("Minimap", "Floor Plan Settings", "assets/images/SFRS Logo.png")
+        left_layout.addWidget(titleCard)
 
-        title = QLabel("Mini Map")
-        title.setObjectName("mainTitle")
-        title.setAlignment(Qt.AlignCenter)
 
-        subtitle = QLabel("Floor plan Settings")
-        subtitle.setObjectName("mainSubtitle")
-        subtitle.setAlignment(Qt.AlignCenter)
+        # Spacer
+        left_layout.addSpacerItem(QSpacerItem(20, 20, QSizePolicy.Minimum, QSizePolicy.Fixed))
 
-        left_layout.addWidget(logo)
-        left_layout.addWidget(title)
-        left_layout.addWidget(subtitle)
-
+        # Settings Buttons
         ButtonLabels = ["Image Blur", "Player Size", "Trail Size", "Tile Size", "Player Size"]
         for i in range(4):
             button_layout = QHBoxLayout()
@@ -48,16 +39,16 @@ class MinimapWindow(QWidget):
             btn_label.setObjectName("BtnLabel")
 
             btn_down = QPushButton("∨")
-            btn_down.setFixedSize(40, 40)
+            btn_down.setFixedSize(30, 30)
             btn_down.setObjectName("arrows")
 
             btn_center = QLabel("1")
-            btn_center.setFixedSize(200, 40)
+            btn_center.setFixedSize(200, 30)
             btn_center.setAlignment(Qt.AlignCenter)
             btn_center.setObjectName("miniMapSettings")
 
             btn_up = QPushButton("∧")
-            btn_up.setFixedSize(40, 40)
+            btn_up.setFixedSize(30, 30)
             btn_up.setObjectName("arrows")
 
             left_layout.addWidget(btn_label)
@@ -66,29 +57,38 @@ class MinimapWindow(QWidget):
             button_layout.addWidget(btn_up)
             left_layout.addLayout(button_layout)
 
+        # Spacer
+        left_layout.addSpacerItem(QSpacerItem(20, 20, QSizePolicy.Minimum, QSizePolicy.Fixed))
+
+        # Recreate Layout Button
         recreate_button = QPushButton("Recreate Layout")
         recreate_button.setObjectName("btnYes")
+        recreate_button.setFont(QFont("Arial", 12))
 
+        # Horizontal Line
         horizontal_line = QLabel()
-        horizontal_line.setFixedSize(250, 5)
+        horizontal_line.setFixedSize(250, 2)
         horizontal_line.setObjectName("horizontalLine")
         horizontal_line.setAlignment(Qt.AlignCenter)
 
+        # Back Button
         btn_back = QPushButton("Back")
         btn_back.setObjectName("btnYes")
+        btn_back.setFont(QFont("Arial", 12))
         btn_back.clicked.connect(self.open_upload_page)  # Connect to the back button
 
         left_layout.addWidget(horizontal_line, alignment=Qt.AlignCenter)
+        left_layout.addSpacerItem(QSpacerItem(20, 20, QSizePolicy.Minimum, QSizePolicy.Fixed))
         left_layout.addWidget(recreate_button, alignment=Qt.AlignCenter)
         left_layout.addWidget(btn_back, alignment=Qt.AlignCenter)
 
+        # Right Layout for Floor Plan
         remaining_height = self.height()
         remaining_height = int(remaining_height)
         aspect_ratio = pixmap.width() / pixmap.height()
         adjusted_width = int(remaining_height * aspect_ratio)
 
         self.floor_plan_view = FloorPlan(self.filepath, width=adjusted_width, height=remaining_height, blur_effect=35)
-        # self.floor_plan_view.setFixedSize(self.width, self.height)
 
         right_layout = QVBoxLayout()
         right_layout.setAlignment(Qt.AlignCenter)
