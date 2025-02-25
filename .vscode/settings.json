@@ -1,5 +1,6 @@
 {
     "python.analysis.extraPaths": [
-        "./Team2/APP"
+        "./Team2/APP",
+        "./Team2/FireFighterTracker/src/views"
     ]
 }
