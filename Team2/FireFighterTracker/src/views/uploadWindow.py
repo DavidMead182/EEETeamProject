@@ -26,7 +26,7 @@ class UploadWindow(QWidget):
 
         self.upload_Image = QLabel("")
         self.upload_Image.setFixedSize(700, 400)
-        self.upload_Image.setScaledContents(False)
+        self.upload_Image.setScaledContents(True)
 
         self.process_button = QPushButton("Create Map")
         self.process_button.setObjectName("btnYes")

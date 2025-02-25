@@ -88,6 +88,7 @@ class MinimapWindow(QWidget):
         adjusted_width = int(remaining_height * aspect_ratio)
 
         self.floor_plan_view = FloorPlan(self.filepath, width=adjusted_width, height=remaining_height, blur_effect=35)
+        # self.floor_plan_view.setFixedSize(self.width, self.height)
 
         right_layout = QVBoxLayout()
         right_layout.setAlignment(Qt.AlignCenter)

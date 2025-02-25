@@ -25,7 +25,6 @@ class MainWindow(QMainWindow):
         self.setGeometry(100, 100, 800, 600)
         self.setWindowIcon(QtGui.QIcon("assets/icons/LOGO.png"))
         self.initWindow()
-        self.apply_stylesheet("assets/stylesheets/base.qss")
 
         self.mainPage = self.initWindow()
 
@@ -35,7 +34,7 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.mainPage)
         self.stack.addWidget(self.uploadPage)
         self.stack.addWidget(self.noPage)
-
+        self.apply_stylesheet("assets/stylesheets/base.qss")
         self.showMaximized()
         print("Log: MainWindow initialised and maximised")
 
