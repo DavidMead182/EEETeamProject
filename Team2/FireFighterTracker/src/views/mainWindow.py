@@ -50,12 +50,12 @@ class MainWindow(QMainWindow):
 
         btn_yes = QPushButton("Yes")
         btn_yes.setObjectName("btnYes")
-        btn_yes.clicked.connect(lambda: self.stack.setCurrentWidget(self.uploadPage))
+        btn_yes.clicked.connect(self.on_yes_button_clicked)
         print("Log: 'Yes' button created")
 
         btn_no = QPushButton("No")
         btn_no.setObjectName("btnNo")
-        btn_no.clicked.connect(lambda: self.stack.setCurrentWidget(self.noPage))
+        btn_no.clicked.connect(self.on_no_button_clicked)
         print("Log: 'No' button created")
 
         btn_layout.addWidget(btn_yes)
@@ -94,6 +94,28 @@ class MainWindow(QMainWindow):
                 self.com_port_dropdown.addItem(f"Port: {port.device}, Port Description: {port.description}")
         print("Log: COM port dropdown updated")
 
+    def on_yes_button_clicked(self):
+        if not global_variables.COM_PORT:
+            print("No COM port selected")
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Information)
+            msg.setText("No COM port selected. Please select a COM port first.")
+            msg.exec_()
+            return
+        
+        self.stack.setCurrentWidget(self.uploadPage)
+
+    def on_no_button_clicked(self):
+        if not global_variables.COM_PORT:
+            print("No COM port selected")
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Information)
+            msg.setText("No COM port selected. Please select a COM port first.")
+            msg.exec_()
+            return
+        
+        self.stack.setCurrentWidget(self.noPage)
+    
     def update_selected_com_port(self):
         selected_index = self.com_port_dropdown.currentIndex()
         if selected_index >= 0:
