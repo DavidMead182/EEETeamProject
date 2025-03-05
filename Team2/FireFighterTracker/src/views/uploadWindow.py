@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QWidget, QPushButton, QFileDialog, QVBoxLayout, QLabel
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt
-
+import global_variables 
 
 from views.minimapWindow import MinimapWindow
 from widgets.titleWidget import TitleWidget
@@ -47,6 +47,7 @@ class UploadWindow(QWidget):
 
     def open_file_dialog(self):
         # Open a file dialog to select an image file
+        print(global_variables.COM_PORT)
         options = QFileDialog.Options()
         file_name, _ = QFileDialog.getOpenFileName(
             self, "Open Image File", "", "Images (*.png *.jpg *.bmp *jpeg)", options=options
