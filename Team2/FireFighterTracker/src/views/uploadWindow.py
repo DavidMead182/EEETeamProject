@@ -47,7 +47,6 @@ class UploadWindow(QWidget):
 
     def open_file_dialog(self):
         # Open a file dialog to select an image file
-        print(global_variables.COM_PORT)
         options = QFileDialog.Options()
         file_name, _ = QFileDialog.getOpenFileName(
             self, "Open Image File", "", "Images (*.png *.jpg *.bmp *jpeg)", options=options
