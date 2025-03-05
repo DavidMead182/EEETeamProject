@@ -2,7 +2,7 @@ import sys
 from PyQt5.QtWidgets import QApplication
 from views.mainWindow import MainWindow
 import os
-import global_variables
+import globalVariables
 
 if __name__ == "__main__":
     sys.path.append(os.path.abspath(os.path.dirname(__file__))) 

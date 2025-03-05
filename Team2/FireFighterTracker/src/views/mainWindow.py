@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import QComboBox
 from widgets.titleWidget import TitleWidget
 from views.uploadWindow import UploadWindow
 from views.noWindow import NoWindow
-import global_variables
+import globalVariables
 
 TILE_SIZE = 1  # Size of each tile
 PLAYER_SIZE = 10  # Size of red dot
@@ -95,7 +95,7 @@ class MainWindow(QMainWindow):
         print("Log: COM port dropdown updated")
 
     def on_yes_button_clicked(self):
-        if not global_variables.COM_PORT:
+        if not globalVariables.COM_PORT:
             print("No COM port selected")
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Information)
@@ -106,7 +106,7 @@ class MainWindow(QMainWindow):
         self.stack.setCurrentWidget(self.uploadPage)
 
     def on_no_button_clicked(self):
-        if not global_variables.COM_PORT:
+        if not globalVariables.COM_PORT:
             print("No COM port selected")
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Information)
@@ -119,8 +119,8 @@ class MainWindow(QMainWindow):
     def update_selected_com_port(self):
         selected_index = self.com_port_dropdown.currentIndex()
         if selected_index >= 0:
-            global_variables.COM_PORT = serial.tools.list_ports.comports()[selected_index]
-            print(f"Log: Selected COM port: {global_variables.COM_PORT}")
+            globalVariables.COM_PORT = serial.tools.list_ports.comports()[selected_index]
+            print(f"Log: Selected COM port: {globalVariables.COM_PORT}")
 
     def scan_com_port(self):
         print("Log: Scanning for COM ports")
@@ -128,18 +128,17 @@ class MainWindow(QMainWindow):
         ports = serial.tools.list_ports.comports()
         msg = QMessageBox()
         if ports:
-            identifier = "USB Serial Device"
-            found_ports = [port for port in ports if identifier in port.description]
+            found_ports = [port for port in ports if globalVariables.IDENTIFIER in port.description]
 
             msg.setWindowTitle("COM Port Scan")
 
             if found_ports:
-                global_variables.COM_PORT = found_ports[0]
+                globalVariables.COM_PORT = found_ports[0]
                 msg.setIcon(QMessageBox.Information)
                 found_ports = [found_port.device for found_port in found_ports]
                 found_ports_str = ",".join(found_ports)
-                msg.setText(f"✅ Found Device(s): {found_ports_str}🔹 Selecting COM Port: {global_variables.COM_PORT}")
-                print(f"Log: Found device(s): {found_ports_str}, selecting COM port: {global_variables.COM_PORT}")
+                msg.setText(f"✅ Found Device(s): {found_ports_str}🔹 Selecting COM Port: {globalVariables.COM_PORT}")
+                print(f"Log: Found device(s): {found_ports_str}, selecting COM port: {globalVariables.COM_PORT}")
             else:
                 msg.setIcon(QMessageBox.Warning)
                 msg.setText("❌ Desired device not detected.")

@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QWidget, QPushButton, QFileDialog, QVBoxLayout, QLabel
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt
-import global_variables 
+import globalVariables
 
 from views.minimapWindow import MinimapWindow
 from widgets.titleWidget import TitleWidget
