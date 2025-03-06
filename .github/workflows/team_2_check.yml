@@ -28,4 +28,8 @@ jobs:
       - name: Check if the code compiles 
         run: |
           python -m compileall Team2  
+      
+      - name: Run tests
+        run: |
+          pytest Team2/tests
           
