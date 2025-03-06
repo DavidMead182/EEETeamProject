@@ -23,7 +23,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -r team2/requirements.txt  
+          pip install -r Team2/requirements.txt  
           
       - name: Check if the code compiles (or tests)
         run: |
