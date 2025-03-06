@@ -8,14 +8,13 @@ from PyQt5.QtWidgets import QComboBox
 from widgets.titleWidget import TitleWidget
 from views.uploadWindow import UploadWindow
 from views.noWindow import NoWindow
+import globalVariables
 
 TILE_SIZE = 1  # Size of each tile
 PLAYER_SIZE = 10  # Size of red dot
 TRAIL_SIZE = 10  # Number of steps to keep the trail
-COM_Port = None # Initially set the com port
 
 class MainWindow(QMainWindow):
-
     def __init__(self):
         super().__init__()
         print("Log: Initialising MainWindow")
@@ -51,12 +50,12 @@ class MainWindow(QMainWindow):
 
         btn_yes = QPushButton("Yes")
         btn_yes.setObjectName("btnYes")
-        btn_yes.clicked.connect(lambda: self.stack.setCurrentWidget(self.uploadPage))
+        btn_yes.clicked.connect(self.on_yes_button_clicked)
         print("Log: 'Yes' button created")
 
         btn_no = QPushButton("No")
         btn_no.setObjectName("btnNo")
-        btn_no.clicked.connect(lambda: self.stack.setCurrentWidget(self.noPage))
+        btn_no.clicked.connect(self.on_no_button_clicked)
         print("Log: 'No' button created")
 
         btn_layout.addWidget(btn_yes)
@@ -95,11 +94,33 @@ class MainWindow(QMainWindow):
                 self.com_port_dropdown.addItem(f"Port: {port.device}, Port Description: {port.description}")
         print("Log: COM port dropdown updated")
 
+    def on_yes_button_clicked(self):
+        if not globalVariables.COM_PORT:
+            print("No COM port selected")
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Information)
+            msg.setText("No COM port selected. Please select a COM port first.")
+            msg.exec_()
+            return
+        
+        self.stack.setCurrentWidget(self.uploadPage)
+
+    def on_no_button_clicked(self):
+        if not globalVariables.COM_PORT:
+            print("No COM port selected")
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Information)
+            msg.setText("No COM port selected. Please select a COM port first.")
+            msg.exec_()
+            return
+        
+        self.stack.setCurrentWidget(self.noPage)
+    
     def update_selected_com_port(self):
         selected_index = self.com_port_dropdown.currentIndex()
         if selected_index >= 0:
-            COM_Port = serial.tools.list_ports.comports()[selected_index]
-            print(f"Log: Selected COM port: {COM_Port}")
+            globalVariables.COM_PORT = serial.tools.list_ports.comports()[selected_index]
+            print(f"Log: Selected COM port: {globalVariables.COM_PORT}")
 
     def scan_com_port(self):
         print("Log: Scanning for COM ports")
@@ -107,18 +128,17 @@ class MainWindow(QMainWindow):
         ports = serial.tools.list_ports.comports()
         msg = QMessageBox()
         if ports:
-            identifier = "USB Serial Device"
-            found_ports = [port for port in ports if identifier in port.description]
+            found_ports = [port for port in ports if globalVariables.IDENTIFIER in port.description]
 
             msg.setWindowTitle("COM Port Scan")
 
             if found_ports:
-                COM_Port = found_ports[0]
+                globalVariables.COM_PORT = found_ports[0]
                 msg.setIcon(QMessageBox.Information)
                 found_ports = [found_port.device for found_port in found_ports]
                 found_ports_str = ",".join(found_ports)
-                msg.setText(f"✅ Found Device(s): {found_ports_str}🔹 Selecting COM Port: {COM_Port}")
-                print(f"Log: Found device(s): {found_ports_str}, selecting COM port: {COM_Port}")
+                msg.setText(f"✅ Found Device(s): {found_ports_str}🔹 Selecting COM Port: {globalVariables.COM_PORT}")
+                print(f"Log: Found device(s): {found_ports_str}, selecting COM port: {globalVariables.COM_PORT}")
             else:
                 msg.setIcon(QMessageBox.Warning)
                 msg.setText("❌ Desired device not detected.")
