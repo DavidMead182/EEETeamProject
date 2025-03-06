@@ -26,7 +26,7 @@ python --version
 Clone this repository and install dependencies:
 ```sh
 git clone https://github.com/DavidMead182/EEETeamProject.git
-cd Team2/FireFighterTracker/
+cd Team2
 pip install -r requirements.txt
 ```
 If a metadata error occurs the app should still run if you run the command below
@@ -34,7 +34,7 @@ If a metadata error occurs the app should still run if you run the command below
 ### How to run
 To start the application, run:
 ```sh
-cd src
+cd FireFighterTracker/src
 python main.py
 ```
 
