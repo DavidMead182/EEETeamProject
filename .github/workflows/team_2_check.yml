@@ -25,7 +25,7 @@ jobs:
         run: |
           pip install -r Team2/requirements.txt  
           
-      - name: Check if the code compiles (or tests)
+      - name: Check if the code compiles 
         run: |
           python -m compileall team2  
           
