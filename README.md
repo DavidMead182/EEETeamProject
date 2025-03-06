@@ -18,7 +18,7 @@ A desktop application built using **PyQt5** that will track the firefighters thr
 
 ### Installation
 #### Prerequisites
-Ensure you have **Python 3.8+** installed. You can check by running:
+Ensure you have **Python 3.12+** installed. You can check by running:
 ```sh
 python --version
 ```
