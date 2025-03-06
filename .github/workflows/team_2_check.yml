@@ -27,5 +27,5 @@ jobs:
           
       - name: Check if the code compiles 
         run: |
-          python -m compileall team2  
+          python -m compileall Team2  
           
