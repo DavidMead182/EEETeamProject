@@ -5,7 +5,7 @@ import os
 
 if __name__ == "__main__":
     sys.path.append(os.path.abspath(os.path.dirname(__file__))) 
-    app = QApplication(sys.arg
+    app = QApplication(sys.argv)
     window = MainWindow()
     window.showMaximized()
     sys.exit(app.exec_())
