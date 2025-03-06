@@ -83,12 +83,12 @@ class MinimapWindow(QWidget):
         left_layout.addWidget(btn_back, alignment=Qt.AlignCenter)
 
         # Right Layout for Floor Plan
-        remaining_height = self.height()
-        remaining_height = int(remaining_height)
+        remaining_height = int(self.height()*2)
         aspect_ratio = pixmap.width() / pixmap.height()
-        adjusted_width = int(remaining_height * aspect_ratio)
+        adjusted_width = int(self.width()*3)
 
         self.floor_plan_view = FloorPlan(self.filepath, width=adjusted_width, height=remaining_height, blur_effect=35)
+        # self.floor_plan_view.setFixedSize(adjusted_width, remaining_height)
 
         right_layout = QVBoxLayout()
         right_layout.setAlignment(Qt.AlignCenter)

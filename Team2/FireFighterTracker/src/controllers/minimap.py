@@ -15,7 +15,6 @@ class FloorPlan(QWidget):
         self.view = QGraphicsView()
         self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        #self.view.setFrameStyle(0)
         self.layout.addWidget(self.view)
 
         # Set up the scene
@@ -24,7 +23,6 @@ class FloorPlan(QWidget):
 
         # Generate the floor plan
         floor_plan = floorplan_to_maze(floor_plan_path, width, height, blur_effect)
-        self.view.setFixedSize(len(floor_plan[0]) * TILE_SIZE, len(floor_plan) * TILE_SIZE)
 
         # Store walls, players, and trail
         self.walls = []
@@ -36,6 +34,11 @@ class FloorPlan(QWidget):
 
         # Install event filter to capture key events
         self.view.installEventFilter(self)
+
+        # Resize the view to fit the window
+        self.view.setFixedSize(width, height)
+        self.view.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+        self.setLayout(self.layout)
 
     def load_floor_plan(self, floor_plan):
         """Load and draw the floor plan with walls and player starting position."""
