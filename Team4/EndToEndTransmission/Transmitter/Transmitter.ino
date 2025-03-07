@@ -11,7 +11,7 @@
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
 
 // Constants for the simulation
-#define UPDATE_INTERVAL 100  // ms between sensor readings
+#define UPDATE_INTERVAL 100  // ms between sensor readings (10Hz)
 #define MAX_SEQUENCE 0xFFF   // 12-bit sequence number (0 to 4095)
 
 // Global sequence number for tracking packets
@@ -145,8 +145,8 @@ void sendData(SensorData data) {
   
   int packetLength = strlen(dataPacket);
   
-  Serial.print("Sending data: "); 
-  Serial.println(dataPacket);
+  // Serial.print("Sending data: "); 
+  // Serial.println(dataPacket);
   
   // Send the packet
   rf95.send((uint8_t *)dataPacket, packetLength);
@@ -158,8 +158,8 @@ void sendData(SensorData data) {
   
   if (rf95.waitAvailableTimeout(500)) {
     if (rf95.recv(buf, &len)) {
-      Serial.print("Got reply: ");
-      Serial.println((char*)buf);
+      // Serial.print("Got reply: ");
+      // Serial.println((char*)buf);
       Serial.print("RSSI: ");
       Serial.println(rf95.lastRssi(), DEC);
     } else {

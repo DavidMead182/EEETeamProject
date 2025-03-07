@@ -369,7 +369,7 @@ class SensorDataProcessor:
         
         try:
             last_plot_update = time.time()
-            plot_update_interval = 0.5  # Update plot every 0.5 seconds
+            plot_update_interval = 0.1  # Update plot at 10Hz (every 0.1 seconds)
             
             while True:
                 # Process any incoming data
