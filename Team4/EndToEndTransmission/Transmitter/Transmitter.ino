@@ -12,6 +12,10 @@ RH_RF95 rf95(RFM95_CS, RFM95_INT);
 
 // Constants for the simulation
 #define UPDATE_INTERVAL 100  // ms between sensor readings
+#define MAX_SEQUENCE 0xFFF   // 12-bit sequence number (0 to 4095)
+
+// Global sequence number for tracking packets
+uint16_t sequenceNumber = 0;
 
 // Structure to hold our sensor data
 struct SensorData {
@@ -19,6 +23,9 @@ struct SensorData {
   float roll;
   float yaw;
   float radarDistance;
+  float accelX;
+  float accelY;
+  float accelZ;
   unsigned long timestamp;
 };
 
@@ -61,10 +68,18 @@ void getIMUData(SensorData *data) {
   static float basePitch = 0.0;
   static float baseRoll = 0.0;
   static float baseYaw = 0.0;
+  static float baseAccelX = 0.0;
+  static float baseAccelY = 0.0;
+  static float baseAccelZ = 9.8; // Starting with approximate gravity
   
   basePitch += random(-5, 6) / 10.0;
   baseRoll += random(-5, 6) / 10.0;
   baseYaw += random(-10, 11) / 10.0;
+  
+  // Simulate acceleration with some random drift
+  baseAccelX = 0.7 * baseAccelX + random(-20, 21) / 100.0;
+  baseAccelY = 0.7 * baseAccelY + random(-20, 21) / 100.0;
+  baseAccelZ = 0.95 * baseAccelZ + 0.05 * 9.8 + random(-10, 11) / 100.0;
   
   // Keep within bounds (I'm assuming our firefighter is probably not upside down) 
   if (basePitch > 45.0) basePitch = 45.0;
@@ -75,9 +90,20 @@ void getIMUData(SensorData *data) {
   if (baseYaw >= 360.0) baseYaw -= 360.0;
   if (baseYaw < 0.0) baseYaw += 360.0;
   
+  // Keep accelerations within reasonable bounds
+  if (baseAccelX > 3.0) baseAccelX = 3.0;
+  if (baseAccelX < -3.0) baseAccelX = -3.0;
+  if (baseAccelY > 3.0) baseAccelY = 3.0;
+  if (baseAccelY < -3.0) baseAccelY = -3.0;
+  if (baseAccelZ > 12.0) baseAccelZ = 12.0;
+  if (baseAccelZ < 7.0) baseAccelZ = 7.0;
+  
   data->pitch = basePitch;
   data->roll = baseRoll;
   data->yaw = baseYaw;
+  data->accelX = baseAccelX;
+  data->accelY = baseAccelY;
+  data->accelZ = baseAccelZ;
 }
 
 // Simulates radar distance reading
@@ -92,17 +118,30 @@ void getRadarData(SensorData *data) {
 
 void sendData(SensorData data) {
   char pitchStr[8], rollStr[8], yawStr[8], distanceStr[8];
-  char dataPacket[128];
+  char accelXStr[8], accelYStr[8], accelZStr[8];
+  char seqHex[4]; // 3 hex chars + null terminator
+  char dataPacket[256]; // Increased size for additional data
+  
+  // Increment sequence number and wrap around
+  sequenceNumber = (sequenceNumber + 1) & MAX_SEQUENCE;
+  
+  // Convert sequence number to 3-digit hex
+  sprintf(seqHex, "%03X", sequenceNumber);
+  
   // Convert floats to strings manually
   dtostrf(data.pitch, 6, 2, pitchStr);
   dtostrf(data.roll, 6, 2, rollStr);
   dtostrf(data.yaw, 6, 2, yawStr);
   dtostrf(data.radarDistance, 6, 2, distanceStr);
+  dtostrf(data.accelX, 6, 2, accelXStr);
+  dtostrf(data.accelY, 6, 2, accelYStr);
+  dtostrf(data.accelZ, 6, 2, accelZStr);
 
   // Format data as a simple string
-  // Format: "P:{pitch},R:{roll},Y:{yaw},D:{distance},T:{timestamp}"
-  sprintf(dataPacket, "P:%s,R:%s,Y:%s,D:%s,T:%lu", 
-          pitchStr, rollStr, yawStr, distanceStr, data.timestamp);
+  // Format: "SEQ:{seq},P:{pitch},R:{roll},Y:{yaw},D:{distance},AX:{accelX},AY:{accelY},AZ:{accelZ},T:{timestamp}"
+  sprintf(dataPacket, "SEQ:%s,P:%s,R:%s,Y:%s,D:%s,AX:%s,AY:%s,AZ:%s,T:%lu", 
+          seqHex, pitchStr, rollStr, yawStr, distanceStr, 
+          accelXStr, accelYStr, accelZStr, data.timestamp);
   
   int packetLength = strlen(dataPacket);
   

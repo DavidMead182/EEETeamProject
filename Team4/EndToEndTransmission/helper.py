@@ -6,6 +6,10 @@ import datetime
 import math
 import argparse
 import os
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+from collections import deque
+import threading
 
 class SensorDataProcessor:
     def __init__(self, com_port, baud_rate=9600):
@@ -28,6 +32,16 @@ class SensorDataProcessor:
         
         print(f"Logging raw data to: {self.raw_log_filename}")
         print(f"Logging processed data to: {self.processed_log_filename}")
+        
+        # Data for live plotting
+        self.plot_lock = threading.Lock()
+        self.time_data = deque(maxlen=100)
+        self.packets_received = deque(maxlen=100)
+        self.packets_lost = deque(maxlen=100)
+        self.loss_percentage = deque(maxlen=100)
+        self.total_packets_received = 0
+        self.total_packets_lost = 0
+        self.plot_active = False
     
     def connect(self):
         """Connect to the Arduino via serial port"""
@@ -52,6 +66,9 @@ class SensorDataProcessor:
         if self.processed_log_file:
             self.processed_log_file.close()
             print(f"Processed log file closed: {self.processed_log_filename}")
+            
+        # Stop the plotting
+        self.plot_active = False
     
     def process_data(self, json_data):
         """Process the sensor data and extract useful information"""
@@ -61,19 +78,50 @@ class SensorDataProcessor:
             
             # Get current time for the log
             current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+            timestamp = datetime.datetime.now()
             
             # Calculate cardinal direction from yaw
             cardinal_direction = self._get_cardinal_direction(data.get('yaw', 0))
+            
+            # Get packet sequence and loss information
+            sequence = data.get('sequence', 0)
+            packets_lost = data.get('packets_lost', 0)
+            
+            # Update plot data
+            with self.plot_lock:
+                self.total_packets_received += 1
+                self.total_packets_lost = packets_lost
+                
+                # Calculate loss percentage
+                if self.total_packets_received + self.total_packets_lost > 0:
+                    loss_percent = (self.total_packets_lost / (self.total_packets_received + self.total_packets_lost)) * 100
+                else:
+                    loss_percent = 0
+                
+                self.time_data.append(timestamp)
+                self.packets_received.append(self.total_packets_received)
+                self.packets_lost.append(self.total_packets_lost)
+                self.loss_percentage.append(loss_percent)
             
             # Create a processed data record
             processed_data = {
                 "time": current_time,
                 "arduino_time_ms": data.get('timestamp', 0),
+                "packet": {
+                    "sequence": sequence,
+                    "packets_lost": packets_lost,
+                    "loss_percentage": loss_percent
+                },
                 "orientation": {
                     "pitch": data.get('pitch', 0),
                     "roll": data.get('roll', 0),
                     "yaw": data.get('yaw', 0),
                     "cardinal_direction": cardinal_direction
+                },
+                "acceleration": {
+                    "x": data.get('accel_x', 0),
+                    "y": data.get('accel_y', 0),
+                    "z": data.get('accel_z', 0)
                 },
                 "radar": {
                     "distance_cm": data.get('distance', 0),
@@ -81,12 +129,17 @@ class SensorDataProcessor:
                 }
             }
             
-            # Create a human-readable summary
+            # Create a human-readable summary with packet loss percentage
+            loss_percentage_str = f"{loss_percent:.2f}%"
             summary = (
                 f"Time: {current_time}\n"
+                f"Packet: Seq={sequence} (Lost: {packets_lost}, Loss Rate: {loss_percentage_str})\n"
                 f"Orientation: Pitch={data.get('pitch', 0):.2f}°, "
                 f"Roll={data.get('roll', 0):.2f}°, "
                 f"Yaw={data.get('yaw', 0):.2f}° ({cardinal_direction})\n"
+                f"Acceleration: X={data.get('accel_x', 0):.2f}, "
+                f"Y={data.get('accel_y', 0):.2f}, "
+                f"Z={data.get('accel_z', 0):.2f} m/s²\n"
                 f"Radar: {data.get('distance', 0):.2f} cm @ {cardinal_direction}\n"
                 f"-------------------------\n"
             )
@@ -128,13 +181,82 @@ class SensorDataProcessor:
         # Default in case of an error
         return "Unknown"
     
-    def run(self):
+    def initialize_plot(self):
+        """Initialize the matplotlib plot for packet loss visualization"""
+        plt.ion()  # Enable interactive mode
+        self.fig, self.ax = plt.subplots(figsize=(10, 6))
+        self.ax.set_title('Packet Loss Percentage')
+        self.ax.set_xlabel('Time')
+        self.ax.set_ylabel('Loss Percentage (%)')
+        self.ax.grid(True)
+        self.loss_line, = self.ax.plot([], [], 'r-', label='Packet Loss %')
+        self.ax.legend()
+        self.ax.set_ylim(0, 100)  # Loss percentage range
+        plt.tight_layout()
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+    
+    def update_plot(self, frame):
+        """Update function for the animation"""
+        if not self.plot_active:
+            return
+            
+        with self.plot_lock:
+            if len(self.time_data) > 0:
+                times = list(self.time_data)
+                loss_pcts = list(self.loss_percentage)
+                
+                self.loss_line.set_data(times, loss_pcts)
+                
+                # Adjust x-axis limits to show the most recent data
+                self.ax.set_xlim(times[0], times[-1])
+                
+                # If we have significant loss, adjust y-axis
+                if max(loss_pcts) > 0:
+                    max_loss = max(loss_pcts)
+                    y_max = min(100, max(10, max_loss * 1.2))  # Set reasonable upper limit
+                    self.ax.set_ylim(0, y_max)
+                
+                # Update info text
+                if hasattr(self, 'info_text') and self.info_text:
+                    self.info_text.remove()
+                    
+                latest_loss = loss_pcts[-1] if loss_pcts else 0
+                total_received = self.total_packets_received
+                total_lost = self.total_packets_lost
+                
+                self.info_text = self.ax.text(0.02, 0.95, 
+                                             f'Current Loss: {latest_loss:.2f}%\n'
+                                             f'Total Packets: {total_received}\n'
+                                             f'Lost Packets: {total_lost}',
+                                             transform=self.ax.transAxes,
+                                             fontsize=10, verticalalignment='top',
+                                             bbox=dict(facecolor='white', alpha=0.5))
+                
+                # Redraw the plot
+                self.fig.canvas.draw()
+                self.fig.canvas.flush_events()
+    
+    def start_plotting(self):
+        """Start the plotting in a background thread"""
+        self.plot_active = True
+        self.initialize_plot()
+        
+        # Create animation that updates every 500ms
+        self.ani = FuncAnimation(self.fig, self.update_plot, interval=500, cache_frame_data=False)
+        plt.show(block=False)
+    
+    def run(self, enable_plotting=True):
         """Main loop to receive and process data"""
         if not self.serial_conn:
             print("Serial connection not established. Call connect() first.")
             return
         
         print("Starting data collection. Press Ctrl+C to exit.")
+        
+        # Start plotting in the background if enabled
+        if enable_plotting:
+            self.start_plotting()
         
         try:
             while True:
@@ -204,6 +326,7 @@ def main():
     parser.add_argument('--port', help='Serial port (COM port) to connect to')
     parser.add_argument('--baud', type=int, default=9600, help='Baud rate (default: 9600)')
     parser.add_argument('--list', action='store_true', help='List available serial ports and exit')
+    parser.add_argument('--no-plot', action='store_true', help='Disable live plotting')
     
     args = parser.parse_args()
     
@@ -243,8 +366,20 @@ def main():
     
     print(f"Using port: {port}")
     processor = SensorDataProcessor(port, args.baud)
+    
+    # Check if matplotlib is available for plotting
+    if args.no_plot:
+        print("Live plotting disabled by user.")
+    else:
+        try:
+            import matplotlib
+            print("Live plotting of packet loss enabled.")
+        except ImportError:
+            print("Matplotlib not available. Live plotting disabled.")
+            args.no_plot = True
+    
     if processor.connect():
-        processor.run()
+        processor.run(enable_plotting=not args.no_plot)
 
 if __name__ == "__main__":
     main()

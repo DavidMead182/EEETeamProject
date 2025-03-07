@@ -77,14 +77,20 @@ void loop() {
   }
 }
 
+// Variables for tracking packets
+uint16_t lastSequence = 0;
+uint16_t packetsLost = 0;
+bool firstPacket = true;
+
 // Convert the received string format data to JSON
 void convertToJson(char* input, char* jsonOutput, size_t maxSize) {
   // Initialize JSON string
   strcpy(jsonOutput, "{");
   
-  // Parse the input string which is in format "P:{pitch},R:{roll},Y:{yaw},D:{distance},T:{timestamp}"
+  // Parse the input string which is in format "SEQ:{seq},P:{pitch},R:{roll},Y:{yaw},D:{distance},AX:{accelX},AY:{accelY},AZ:{accelZ},T:{timestamp}"
   char *token = strtok(input, ",");
   bool firstItem = true;
+  uint16_t currentSequence = 0;
   
   while (token != NULL) {
     // Add comma if not the first item
@@ -99,7 +105,41 @@ void convertToJson(char* input, char* jsonOutput, size_t maxSize) {
     unsigned long timeValue;
     
     // Check what type of data this is
-    if (token[0] == 'P' && token[1] == ':') {  // Pitch
+    if (token[0] == 'S' && token[1] == 'E' && token[2] == 'Q' && token[3] == ':') {  // Sequence
+      strcpy(key, "\"sequence\"");
+      char seqHex[4] = {0};
+      strncpy(seqHex, token + 4, 3); // Get the 3 hex digits
+      currentSequence = strtol(seqHex, NULL, 16); // Convert hex to decimal
+      sprintf(jsonOutput + strlen(jsonOutput), "%s:%d", key, currentSequence);
+      
+      // Calculate packet loss
+      if (!firstPacket) {
+        // Expected next sequence
+        uint16_t expectedSeq = (lastSequence + 1) & 0xFFF;
+        
+        // If current sequence is not what we expected
+        if (currentSequence != expectedSeq) {
+          // Calculate how many packets were lost
+          uint16_t lost;
+          if (currentSequence > expectedSeq) {
+            lost = currentSequence - expectedSeq;
+          } else {
+            // Handle wrap-around
+            lost = (0xFFF - expectedSeq) + currentSequence + 1;
+          }
+          packetsLost += lost;
+        }
+      } else {
+        firstPacket = false;
+      }
+      
+      // Update last sequence
+      lastSequence = currentSequence;
+      
+      // Add packet loss stats to JSON
+      sprintf(jsonOutput + strlen(jsonOutput), ",\"packets_lost\":%d", packetsLost);
+    }
+    else if (token[0] == 'P' && token[1] == ':') {  // Pitch
       strcpy(key, "\"pitch\"");
       value = atof(token + 2);  // Skip "P:"
       char valueStr[15];
@@ -123,6 +163,27 @@ void convertToJson(char* input, char* jsonOutput, size_t maxSize) {
     else if (token[0] == 'D' && token[1] == ':') {  // Distance
       strcpy(key, "\"distance\"");
       value = atof(token + 2);  // Skip "D:"
+      char valueStr[15];
+      dtostrf(value, 1, 2, valueStr);
+      sprintf(jsonOutput + strlen(jsonOutput), "%s:%s", key, valueStr);
+    }
+    else if (token[0] == 'A' && token[1] == 'X' && token[2] == ':') {  // AccelX
+      strcpy(key, "\"accel_x\"");
+      value = atof(token + 3);  // Skip "AX:"
+      char valueStr[15];
+      dtostrf(value, 1, 2, valueStr);
+      sprintf(jsonOutput + strlen(jsonOutput), "%s:%s", key, valueStr);
+    }
+    else if (token[0] == 'A' && token[1] == 'Y' && token[2] == ':') {  // AccelY
+      strcpy(key, "\"accel_y\"");
+      value = atof(token + 3);  // Skip "AY:"
+      char valueStr[15];
+      dtostrf(value, 1, 2, valueStr);
+      sprintf(jsonOutput + strlen(jsonOutput), "%s:%s", key, valueStr);
+    }
+    else if (token[0] == 'A' && token[1] == 'Z' && token[2] == ':') {  // AccelZ
+      strcpy(key, "\"accel_z\"");
+      value = atof(token + 3);  // Skip "AZ:"
       char valueStr[15];
       dtostrf(value, 1, 2, valueStr);
       sprintf(jsonOutput + strlen(jsonOutput), "%s:%s", key, valueStr);
