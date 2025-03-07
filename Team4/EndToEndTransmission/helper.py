@@ -8,6 +8,7 @@ import argparse
 import os
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+import matplotlib.dates as mdates
 from collections import deque
 import threading
 
@@ -183,68 +184,164 @@ class SensorDataProcessor:
     
     def initialize_plot(self):
         """Initialize the matplotlib plot for packet loss visualization"""
-        plt.ion()  # Enable interactive mode
-        self.fig, self.ax = plt.subplots(figsize=(10, 6))
-        self.ax.set_title('Packet Loss Percentage')
-        self.ax.set_xlabel('Time')
-        self.ax.set_ylabel('Loss Percentage (%)')
-        self.ax.grid(True)
-        self.loss_line, = self.ax.plot([], [], 'r-', label='Packet Loss %')
-        self.ax.legend()
-        self.ax.set_ylim(0, 100)  # Loss percentage range
-        plt.tight_layout()
-        self.fig.canvas.draw()
-        self.fig.canvas.flush_events()
+        # Use non-interactive backend if running headless
+        try:
+            plt.ion()  # Enable interactive mode
+            self.fig, self.ax = plt.subplots(figsize=(10, 6))
+            self.ax.set_title('Packet Loss Percentage')
+            self.ax.set_xlabel('Time')
+            self.ax.set_ylabel('Loss Percentage (%)')
+            self.ax.grid(True)
+            
+            # Setup time formatting for x-axis
+            self.ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
+            self.ax.xaxis.set_tick_params(rotation=45)
+            
+            # Use dummy time values initially (convert to matplotlib date numbers)
+            now = datetime.datetime.now()
+            initial_times = [mdates.date2num(now)]
+            initial_values = [0]
+            self.loss_line, = self.ax.plot(initial_times, initial_values, 'r-', label='Packet Loss %')
+            
+            self.ax.legend()
+            self.ax.set_ylim(0, 100)  # Loss percentage range
+            plt.tight_layout()
+            
+            # Add initial info text
+            self.info_text = self.ax.text(0.02, 0.95, 
+                                         f'Current Loss: 0.00%\n'
+                                         f'Total Packets: 0\n'
+                                         f'Lost Packets: 0',
+                                         transform=self.ax.transAxes,
+                                         fontsize=10, verticalalignment='top',
+                                         bbox=dict(facecolor='white', alpha=0.5))
+            
+            self.fig.canvas.draw()
+            self.fig.canvas.flush_events()
+            print("Plot initialized successfully")
+        except Exception as e:
+            print(f"Error initializing plot: {e}")
+            self.plot_active = False
     
     def update_plot(self, frame):
         """Update function for the animation"""
         if not self.plot_active:
             return
-            
-        with self.plot_lock:
-            if len(self.time_data) > 0:
-                times = list(self.time_data)
-                loss_pcts = list(self.loss_percentage)
-                
-                self.loss_line.set_data(times, loss_pcts)
-                
-                # Adjust x-axis limits to show the most recent data
-                self.ax.set_xlim(times[0], times[-1])
-                
-                # If we have significant loss, adjust y-axis
-                if max(loss_pcts) > 0:
-                    max_loss = max(loss_pcts)
-                    y_max = min(100, max(10, max_loss * 1.2))  # Set reasonable upper limit
-                    self.ax.set_ylim(0, y_max)
-                
-                # Update info text
-                if hasattr(self, 'info_text') and self.info_text:
-                    self.info_text.remove()
+        
+        try:
+            with self.plot_lock:
+                if len(self.time_data) > 0:
+                    # Convert datetime objects to matplotlib dates
+                    times = [mdates.date2num(t) for t in self.time_data]
+                    loss_pcts = list(self.loss_percentage)
                     
-                latest_loss = loss_pcts[-1] if loss_pcts else 0
-                total_received = self.total_packets_received
-                total_lost = self.total_packets_lost
-                
-                self.info_text = self.ax.text(0.02, 0.95, 
-                                             f'Current Loss: {latest_loss:.2f}%\n'
-                                             f'Total Packets: {total_received}\n'
-                                             f'Lost Packets: {total_lost}',
-                                             transform=self.ax.transAxes,
-                                             fontsize=10, verticalalignment='top',
-                                             bbox=dict(facecolor='white', alpha=0.5))
-                
-                # Redraw the plot
-                self.fig.canvas.draw()
-                self.fig.canvas.flush_events()
+                    # Update the line data
+                    self.loss_line.set_xdata(times)
+                    self.loss_line.set_ydata(loss_pcts)
+                    
+                    # Adjust x-axis to show the most recent data
+                    self.ax.set_xlim(times[0], times[-1])
+                    self.fig.autofmt_xdate()  # Auto-format the x date labels
+                    
+                    # If we have significant loss, adjust y-axis
+                    if loss_pcts and max(loss_pcts) > 0:
+                        max_loss = max(loss_pcts)
+                        y_max = min(100, max(10, max_loss * 1.2))  # Set reasonable upper limit
+                        self.ax.set_ylim(0, y_max)
+                    
+                    # Update info text
+                    if hasattr(self, 'info_text') and self.info_text:
+                        self.info_text.remove()
+                        
+                    latest_loss = loss_pcts[-1] if loss_pcts else 0
+                    total_received = self.total_packets_received
+                    total_lost = self.total_packets_lost
+                    
+                    self.info_text = self.ax.text(0.02, 0.95, 
+                                                f'Current Loss: {latest_loss:.2f}%\n'
+                                                f'Total Packets: {total_received}\n'
+                                                f'Lost Packets: {total_lost}',
+                                                transform=self.ax.transAxes,
+                                                fontsize=10, verticalalignment='top',
+                                                bbox=dict(facecolor='white', alpha=0.5))
+                    
+                    # Redraw the plot
+                    self.fig.canvas.draw()
+                    self.fig.canvas.flush_events()
+                    
+        except Exception as e:
+            print(f"Error updating plot: {e}")
+            self.plot_active = False
     
     def start_plotting(self):
         """Start the plotting in a background thread"""
-        self.plot_active = True
-        self.initialize_plot()
-        
-        # Create animation that updates every 500ms
-        self.ani = FuncAnimation(self.fig, self.update_plot, interval=500, cache_frame_data=False)
-        plt.show(block=False)
+        try:
+            self.plot_active = True
+            
+            # Use a simpler plotting approach as a backup option
+            # Initialize simple plot
+            plt.figure(figsize=(10, 6))
+            plt.title('Packet Loss Percentage')
+            plt.xlabel('Sample')
+            plt.ylabel('Loss Percentage (%)')
+            plt.ylim(0, 100)
+            plt.grid(True)
+            
+            # Create a background thread to update the plot periodically
+            def update_thread():
+                count = 0
+                while self.plot_active:
+                    try:
+                        with self.plot_lock:
+                            loss_pcts = list(self.loss_percentage)
+                            if loss_pcts:
+                                plt.clf()
+                                plt.title('Packet Loss Percentage')
+                                plt.xlabel('Sample')
+                                plt.ylabel('Loss Percentage (%)')
+                                
+                                # Use sample numbers for x-axis instead of times
+                                sample_nums = list(range(len(loss_pcts)))
+                                
+                                plt.plot(sample_nums, loss_pcts, 'r-', label='Packet Loss %')
+                                
+                                # Set y-limits based on data
+                                if max(loss_pcts) > 0:
+                                    y_max = min(100, max(10, max(loss_pcts) * 1.2))
+                                    plt.ylim(0, y_max)
+                                else:
+                                    plt.ylim(0, 10)
+                                
+                                # Add text annotation
+                                latest_loss = loss_pcts[-1] if loss_pcts else 0
+                                plt.annotate(f'Current Loss: {latest_loss:.2f}%\n'
+                                             f'Total Packets: {self.total_packets_received}\n'
+                                             f'Lost Packets: {self.total_packets_lost}',
+                                             xy=(0.02, 0.95), xycoords='axes fraction',
+                                             fontsize=10, verticalalignment='top',
+                                             bbox=dict(facecolor='white', alpha=0.5))
+                                
+                                plt.grid(True)
+                                plt.legend()
+                                plt.draw()
+                                plt.pause(0.001)
+                                count += 1
+                    except Exception as e:
+                        print(f"Error in update thread: {e}")
+                    
+                    # Sleep to avoid consuming too much CPU
+                    time.sleep(0.5)
+            
+            # Start the update thread
+            self.update_thread = threading.Thread(target=update_thread)
+            self.update_thread.daemon = True
+            self.update_thread.start()
+            
+            print("Simple plot animation started")
+            
+        except Exception as e:
+            print(f"Failed to start plotting: {e}")
+            self.plot_active = False
     
     def run(self, enable_plotting=True):
         """Main loop to receive and process data"""
