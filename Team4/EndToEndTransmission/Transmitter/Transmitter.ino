@@ -91,13 +91,18 @@ void getRadarData(SensorData *data) {
 }
 
 void sendData(SensorData data) {
+  char pitchStr[8], rollStr[8], yawStr[8], distanceStr[8];
   char dataPacket[128];
-  
+  // Convert floats to strings manually
+  dtostrf(data.pitch, 6, 2, pitchStr);
+  dtostrf(data.roll, 6, 2, rollStr);
+  dtostrf(data.yaw, 6, 2, yawStr);
+  dtostrf(data.radarDistance, 6, 2, distanceStr);
+
   // Format data as a simple string
   // Format: "P:{pitch},R:{roll},Y:{yaw},D:{distance},T:{timestamp}"
-  sprintf(dataPacket, "P:%.2f,R:%.2f,Y:%.2f,D:%.2f,T:%lu", 
-          data.pitch, data.roll, data.yaw, 
-          data.radarDistance, data.timestamp);
+  sprintf(dataPacket, "P:%s,R:%s,Y:%s,D:%s,T:%lu", 
+          pitchStr, rollStr, yawStr, distanceStr, data.timestamp);
   
   int packetLength = strlen(dataPacket);
   
