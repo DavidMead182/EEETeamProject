@@ -274,73 +274,85 @@ class SensorDataProcessor:
             self.plot_active = False
     
     def start_plotting(self):
-        """Start the plotting in a background thread"""
+        """Start the plotting in the main thread using a non-blocking approach"""
         try:
             self.plot_active = True
             
-            # Use a simpler plotting approach as a backup option
-            # Initialize simple plot
-            plt.figure(figsize=(10, 6))
-            plt.title('Packet Loss Percentage')
-            plt.xlabel('Sample')
-            plt.ylabel('Loss Percentage (%)')
-            plt.ylim(0, 100)
-            plt.grid(True)
+            # Initialize the plot in the main thread
+            plt.ion()  # Turn on interactive mode
+            self.fig = plt.figure(figsize=(10, 6))
+            self.ax = self.fig.add_subplot(111)
+            self.ax.set_title('Packet Loss Percentage')
+            self.ax.set_xlabel('Sample Number')
+            self.ax.set_ylabel('Loss Percentage (%)')
+            self.ax.set_ylim(0, 10)  # Start with a small range
+            self.ax.grid(True)
             
-            # Create a background thread to update the plot periodically
-            def update_thread():
-                count = 0
-                while self.plot_active:
-                    try:
-                        with self.plot_lock:
-                            loss_pcts = list(self.loss_percentage)
-                            if loss_pcts:
-                                plt.clf()
-                                plt.title('Packet Loss Percentage')
-                                plt.xlabel('Sample')
-                                plt.ylabel('Loss Percentage (%)')
-                                
-                                # Use sample numbers for x-axis instead of times
-                                sample_nums = list(range(len(loss_pcts)))
-                                
-                                plt.plot(sample_nums, loss_pcts, 'r-', label='Packet Loss %')
-                                
-                                # Set y-limits based on data
-                                if max(loss_pcts) > 0:
-                                    y_max = min(100, max(10, max(loss_pcts) * 1.2))
-                                    plt.ylim(0, y_max)
-                                else:
-                                    plt.ylim(0, 10)
-                                
-                                # Add text annotation
-                                latest_loss = loss_pcts[-1] if loss_pcts else 0
-                                plt.annotate(f'Current Loss: {latest_loss:.2f}%\n'
-                                             f'Total Packets: {self.total_packets_received}\n'
-                                             f'Lost Packets: {self.total_packets_lost}',
-                                             xy=(0.02, 0.95), xycoords='axes fraction',
-                                             fontsize=10, verticalalignment='top',
-                                             bbox=dict(facecolor='white', alpha=0.5))
-                                
-                                plt.grid(True)
-                                plt.legend()
-                                plt.draw()
-                                plt.pause(0.001)
-                                count += 1
-                    except Exception as e:
-                        print(f"Error in update thread: {e}")
-                    
-                    # Sleep to avoid consuming too much CPU
-                    time.sleep(0.5)
+            # Create empty line
+            self.line, = self.ax.plot([], [], 'r-', label='Packet Loss %')
+            self.ax.legend()
             
-            # Start the update thread
-            self.update_thread = threading.Thread(target=update_thread)
-            self.update_thread.daemon = True
-            self.update_thread.start()
+            # Add initial text annotation
+            self.info_text = self.ax.text(0.02, 0.95, 
+                                         f'Current Loss: 0.00%\n'
+                                         f'Total Packets: 0\n'
+                                         f'Lost Packets: 0',
+                                         transform=self.ax.transAxes,
+                                         fontsize=10, verticalalignment='top',
+                                         bbox=dict(facecolor='white', alpha=0.5))
             
-            print("Simple plot animation started")
+            # Show the plot window
+            self.fig.canvas.draw()
+            plt.show(block=False)
+            
+            print("Plot initialized in main thread")
             
         except Exception as e:
             print(f"Failed to start plotting: {e}")
+            self.plot_active = False
+    
+    def update_plot(self):
+        """Update the plot with current data - called from main thread"""
+        if not self.plot_active:
+            return
+            
+        try:
+            with self.plot_lock:
+                loss_pcts = list(self.loss_percentage)
+                if loss_pcts:
+                    # Use sample numbers for x-axis
+                    sample_nums = list(range(len(loss_pcts)))
+                    
+                    # Update the line data
+                    self.line.set_data(sample_nums, loss_pcts)
+                    
+                    # Update axis limits
+                    self.ax.set_xlim(0, max(10, len(sample_nums)))
+                    
+                    # Update y-axis if needed
+                    if max(loss_pcts) > 0:
+                        y_max = min(100, max(10, max(loss_pcts) * 1.2))
+                        self.ax.set_ylim(0, y_max)
+                    
+                    # Update info text
+                    latest_loss = loss_pcts[-1] if loss_pcts else 0
+                    if hasattr(self, 'info_text') and self.info_text:
+                        self.info_text.remove()
+                    
+                    self.info_text = self.ax.text(0.02, 0.95, 
+                                                 f'Current Loss: {latest_loss:.2f}%\n'
+                                                 f'Total Packets: {self.total_packets_received}\n'
+                                                 f'Lost Packets: {self.total_packets_lost}',
+                                                 transform=self.ax.transAxes,
+                                                 fontsize=10, verticalalignment='top',
+                                                 bbox=dict(facecolor='white', alpha=0.5))
+                    
+                    # Redraw the plot
+                    self.fig.canvas.draw_idle()
+                    self.fig.canvas.flush_events()
+                    
+        except Exception as e:
+            print(f"Error updating plot: {e}")
             self.plot_active = False
     
     def run(self, enable_plotting=True):
@@ -351,12 +363,16 @@ class SensorDataProcessor:
         
         print("Starting data collection. Press Ctrl+C to exit.")
         
-        # Start plotting in the background if enabled
+        # Start plotting if enabled
         if enable_plotting:
             self.start_plotting()
         
         try:
+            last_plot_update = time.time()
+            plot_update_interval = 0.5  # Update plot every 0.5 seconds
+            
             while True:
+                # Process any incoming data
                 if self.serial_conn.in_waiting > 0:
                     # Read a line from the serial port
                     line = self.serial_conn.readline().decode('utf-8').strip()
@@ -377,9 +393,18 @@ class SensorDataProcessor:
                             
                             # Print summary to console
                             print(summary)
+                            
+                            # Flag that we should update the plot soon
+                            new_data = True
                     else:
                         # Print non-JSON lines as debug info
                         print(f"Debug: {line}")
+                
+                # Update the plot periodically from the main thread
+                current_time = time.time()
+                if enable_plotting and self.plot_active and (current_time - last_plot_update >= plot_update_interval):
+                    self.update_plot()
+                    last_plot_update = current_time
                 
                 # Small delay to prevent CPU hogging
                 time.sleep(0.01)
