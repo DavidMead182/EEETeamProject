@@ -1,3 +1,6 @@
 
 derviation of model of heading
 https://www.mdpi.com/1424-8220/11/10/9182
+
+calibration
+Gebre-Egziabher, D; Elkaim, GH; Powell, JD; Parkinson, BW. A non-linear, two-step estimation algorithm for calibrating solid-state strapdown magnetometers. Proceedings of 8th International Conference on Navigation Systems, St Petersburg, Russia, 28–30 May 2001.
