@@ -146,6 +146,7 @@ class PentagonalRoomSimulator:
         
         pitch_drift = 0.0
         roll_drift = 0.0
+        sequence = 0
         
         for i in range(self.num_steps):
             timestamp = int(time.time() * 1000) + i * 100  # Milliseconds with 100 millisecond intervals
@@ -156,15 +157,47 @@ class PentagonalRoomSimulator:
             pitch_drift = max(-10, min(10, pitch_drift))
             roll_drift = max(-10, min(10, roll_drift))
             
+            # Generate simulated accelerometer readings based on orientation
+            # These are simplified and don't account for proper physics
+            heading_rad = math.radians(self.headings[i])
+            # Simulate acceleration relative to IMU heading
+            accel_x = self._add_noise(0.0, self.noise_level * 0.5)  # Lateral acceleration
+            accel_y = self._add_noise(0.0, self.noise_level * 0.5)  # Forward/backward acceleration
+            accel_z = self._add_noise(9.81, self.noise_level)  # Vertical (gravity) acceleration
+            
+            # Get values to generate the string format
+            pitch = self._add_noise(pitch_drift, self.noise_level * 2)
+            roll = self._add_noise(roll_drift, self.noise_level * 2)
+            yaw = self._add_noise(self.headings[i], self.noise_level * 5)
+            distance = self._add_noise(self.radar_readings[i] * 100, self.noise_level * 10)  # Convert to cm
+            
+            # Format using the string format expected by the C code parser
+            # Format sequence as 3-digit hex
+            raw_data = f"SEQ:{sequence:03x},P:{pitch:.2f},R:{roll:.2f},Y:{yaw:.2f},D:{distance:.2f},"
+            raw_data += f"AX:{accel_x:.2f},AY:{accel_y:.2f},AZ:{accel_z:.2f},T:{timestamp}"
+            
+            # Create the JSON as it would be after C code parsing
             reading = {
-                "timestamp": timestamp,
-                "pitch": self._add_noise(pitch_drift, self.noise_level * 2),
-                "roll": self._add_noise(roll_drift, self.noise_level * 2),
-                "yaw": self._add_noise(self.headings[i], self.noise_level * 5),
-                "distance": self._add_noise(self.radar_readings[i] * 100, self.noise_level * 10)  # Convert to cm
+                "sequence": sequence,
+                "packets_lost": 0,  # Will be calculated by the C code in real device
+                "pitch": pitch,
+                "roll": roll,
+                "yaw": yaw,
+                "distance": distance,
+                "accel_x": accel_x,
+                "accel_y": accel_y,
+                "accel_z": accel_z,
+                "timestamp": timestamp
             }
             
+            # Store raw data separately for generating the raw format file
+            self.raw_data_strings = getattr(self, 'raw_data_strings', [])
+            self.raw_data_strings.append(raw_data)
+            
             readings.append(reading)
+            
+            # Increment sequence number and wrap at 4095 (0xFFF)
+            sequence = (sequence + 1) % 4096
         
         return readings
     
@@ -178,7 +211,14 @@ class PentagonalRoomSimulator:
             for reading in self.sensor_readings:
                 f.write(json.dumps(reading) + '\n')
         
+        # Also generate raw data format (just the string representation)
+        raw_filename = filename.replace('.json', '_raw.txt')
+        with open(raw_filename, 'w') as f:
+            for raw_data in self.raw_data_strings:
+                f.write(raw_data + '\n')
+        
         print(f"Generated simulated data: {filename}")
+        print(f"Generated raw format data: {raw_filename}")
         return filename
     
     def plot_visualization(self, filename=None):

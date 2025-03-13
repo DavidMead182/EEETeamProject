@@ -79,7 +79,7 @@ class SimulationDataProcessor:
     def _estimate_position(self, i, prev_x=0, prev_y=0):
         """
         Estimate position based on sensor reading.
-        This is a simple dead reckoning approach.
+        This is a dead reckoning approach that uses accelerometer data.
         """
         if i == 0:
             # Start at the origin for the first position
@@ -88,13 +88,40 @@ class SimulationDataProcessor:
         # Get time interval
         dt = (self.sensor_data[i]['timestamp'] - self.sensor_data[i-1]['timestamp']) / 1000.0  # Convert to seconds
         
-        # Assume a constant movement speed (adjust as needed)
-        speed = 0.5  # meters per second
+        # Use accelerometer data to improve position estimate
+        curr_reading = self.sensor_data[i-1]
         
-        # Calculate displacement based on heading
-        heading_rad = math.radians(self.sensor_data[i-1]['yaw'])
-        dx = speed * dt * math.cos(heading_rad)
-        dy = speed * dt * math.sin(heading_rad)
+        # If we have acceleration data available
+        if 'accel_x' in curr_reading and 'accel_y' in curr_reading:
+            # Convert accelerations from IMU frame to world frame
+            heading_rad = math.radians(curr_reading['yaw'])
+            
+            # IMU acceleration is relative to the IMU heading
+            # accel_x is lateral (left/right) in the IMU frame
+            # accel_y is forward/backward in the IMU frame
+            world_accel_x = (curr_reading['accel_y'] * math.cos(heading_rad) - 
+                             curr_reading['accel_x'] * math.sin(heading_rad))
+            world_accel_y = (curr_reading['accel_y'] * math.sin(heading_rad) + 
+                             curr_reading['accel_x'] * math.cos(heading_rad))
+            
+            # Simple double integration for position (with damping)
+            dx = world_accel_x * 0.5 * dt * dt
+            dy = world_accel_y * 0.5 * dt * dt
+            
+            # Mix with basic dead reckoning for stability
+            speed = 0.5  # meters per second
+            dr_dx = speed * dt * math.cos(heading_rad)
+            dr_dy = speed * dt * math.sin(heading_rad)
+            
+            # Weighted combination (mostly rely on dead reckoning for stability)
+            dx = 0.2 * dx + 0.8 * dr_dx
+            dy = 0.2 * dy + 0.8 * dr_dy
+        else:
+            # Fallback to simple dead reckoning
+            heading_rad = math.radians(curr_reading['yaw'])
+            speed = 0.5  # meters per second
+            dx = speed * dt * math.cos(heading_rad)
+            dy = speed * dt * math.sin(heading_rad)
         
         # Calculate new position
         new_x = prev_x + dx
@@ -110,7 +137,13 @@ class SimulationDataProcessor:
         self.radar_points = []
         
         # Process each sensor reading
+        total_packets_lost = 0
+        
         for i, reading in enumerate(self.sensor_data):
+            # Check packets lost from the data (as if it was processed by the C code)
+            if 'packets_lost' in reading:
+                total_packets_lost = reading['packets_lost']
+            
             # Get or estimate position
             if i == 0:
                 pos = (0.0, 0.0)  # Start at origin
@@ -136,6 +169,7 @@ class SimulationDataProcessor:
         self.reconstructed_room = self._reconstruct_room()
         
         print(f"Processed {len(self.sensor_data)} sensor readings")
+        print(f"Total packets lost according to sequence numbers: {total_packets_lost}")
     
     def plot_reconstruction(self, filename=None, show_animation=False):
         """Generate a visualization of the reconstructed path and room."""
@@ -149,19 +183,24 @@ class SimulationDataProcessor:
             base_name = os.path.splitext(base_filename)[0]
             filename = f'logs/{base_name}_reconstruction.png'
         
-        fig, ax = plt.subplots(figsize=(10, 10))
+        # Create subplots: main path plot and acceleration data plot
+        fig = plt.figure(figsize=(15, 10))
+        gs = fig.add_gridspec(2, 1, height_ratios=[3, 1])
+        ax_path = fig.add_subplot(gs[0])
+        ax_accel = fig.add_subplot(gs[1])
         
+        # Path plot
         path_x = [pos[0] for pos in self.positions]
         path_y = [pos[1] for pos in self.positions]
-        ax.plot(path_x, path_y, 'g-', linewidth=2, label='Reconstructed Path')
+        ax_path.plot(path_x, path_y, 'g-', linewidth=2, label='Reconstructed Path')
         
-        ax.plot(path_x[0], path_y[0], 'go', markersize=8, label='Start')
-        ax.plot(path_x[-1], path_y[-1], 'rx', markersize=8, label='End')
+        ax_path.plot(path_x[0], path_y[0], 'go', markersize=8, label='Start')
+        ax_path.plot(path_x[-1], path_y[-1], 'rx', markersize=8, label='End')
         
         # Plot the radar points
         radar_x = [point[0] for point in self.radar_points]
         radar_y = [point[1] for point in self.radar_points]
-        ax.scatter(radar_x, radar_y, c='blue', s=10, alpha=0.5, label='Radar Points')
+        ax_path.scatter(radar_x, radar_y, c='blue', s=10, alpha=0.5, label='Radar Points')
         
         # Plot radar lines for a subset of points
         step = max(1, len(self.positions) // 12)  # Show at most 12 points to avoid clutter
@@ -171,28 +210,28 @@ class SimulationDataProcessor:
             radar_x, radar_y = self.radar_points[i]
             
             # Plot position
-            ax.plot(x, y, 'ro', markersize=6)
+            ax_path.plot(x, y, 'ro', markersize=6)
             
             heading_rad = math.radians(self.headings[i])
             dx = 0.5 * math.cos(heading_rad)
             dy = 0.5 * math.sin(heading_rad)
-            ax.arrow(x, y, dx, dy, head_width=0.2, head_length=0.3, fc='red', ec='red')
+            ax_path.arrow(x, y, dx, dy, head_width=0.2, head_length=0.3, fc='red', ec='red')
             
-            ax.plot([x, radar_x], [y, radar_y], 'r-', alpha=0.6)
+            ax_path.plot([x, radar_x], [y, radar_y], 'r-', alpha=0.6)
         
         # Plot the reconstructed room if available
         if self.reconstructed_room:
             room = Polygon(self.reconstructed_room, fill=False, edgecolor='purple', 
                           linewidth=2, linestyle='--', label='Reconstructed Room')
-            ax.add_patch(room)
+            ax_path.add_patch(room)
         
-        ax.legend()
+        ax_path.legend()
         
-        ax.set_xlabel('X (meters)')
-        ax.set_ylabel('Y (meters)')
-        ax.set_title('Reconstructed Path and Room')
+        ax_path.set_xlabel('X (meters)')
+        ax_path.set_ylabel('Y (meters)')
+        ax_path.set_title('Reconstructed Path and Room')
         
-        ax.set_aspect('equal')
+        ax_path.set_aspect('equal')
         
         # Set limits automatically based on data
         min_x = min(min(pos[0] for pos in self.positions), min(point[0] for point in self.radar_points))
@@ -201,11 +240,31 @@ class SimulationDataProcessor:
         max_y = max(max(pos[1] for pos in self.positions), max(point[1] for point in self.radar_points))
         
         padding = 2.0
-        ax.set_xlim(min_x - padding, max_x + padding)
-        ax.set_ylim(min_y - padding, max_y + padding)
+        ax_path.set_xlim(min_x - padding, max_x + padding)
+        ax_path.set_ylim(min_y - padding, max_y + padding)
         
-        ax.grid(True, linestyle='--', alpha=0.7)
+        ax_path.grid(True, linestyle='--', alpha=0.7)
         
+        # Acceleration plot
+        timestamps = [reading['timestamp'] for reading in self.sensor_data]
+        timestamps = [(t - timestamps[0])/1000.0 for t in timestamps]  # Convert to seconds from start
+        
+        if 'accel_x' in self.sensor_data[0]:
+            accel_x = [reading['accel_x'] for reading in self.sensor_data]
+            accel_y = [reading['accel_y'] for reading in self.sensor_data]
+            accel_z = [reading['accel_z'] for reading in self.sensor_data]
+            
+            ax_accel.plot(timestamps, accel_x, 'r-', label='Accel X')
+            ax_accel.plot(timestamps, accel_y, 'g-', label='Accel Y')
+            ax_accel.plot(timestamps, accel_z, 'b-', label='Accel Z')
+            
+            ax_accel.set_xlabel('Time (seconds)')
+            ax_accel.set_ylabel('Acceleration (m/s²)')
+            ax_accel.set_title('IMU Acceleration Data')
+            ax_accel.legend()
+            ax_accel.grid(True, linestyle='--', alpha=0.7)
+        
+        plt.tight_layout()
         plt.savefig(filename, dpi=300, bbox_inches='tight')
         
         if show_animation:
@@ -228,24 +287,29 @@ class SimulationDataProcessor:
             base_name = os.path.splitext(base_filename)[0]
             filename = f'logs/{base_name}_animation.gif'  
         
-        fig, ax = plt.subplots(figsize=(10, 10))
+        # Create figure with subplots - main plot and acceleration subplot
+        fig = plt.figure(figsize=(15, 10))
+        gs = fig.add_gridspec(2, 1, height_ratios=[3, 1])
+        ax_path = fig.add_subplot(gs[0])
+        ax_accel = fig.add_subplot(gs[1])
         
-        path_line, = ax.plot([], [], 'g-', linewidth=2)
-        position_marker, = ax.plot([], [], 'ro', markersize=8)
-        radar_line, = ax.plot([], [], 'r-', alpha=0.8)
-        radar_points = ax.scatter([], [], c='blue', s=10, alpha=0.5)
+        # Path plot elements
+        path_line, = ax_path.plot([], [], 'g-', linewidth=2)
+        position_marker, = ax_path.plot([], [], 'ro', markersize=8)
+        radar_line, = ax_path.plot([], [], 'r-', alpha=0.8)
+        radar_points = ax_path.scatter([], [], c='blue', s=10, alpha=0.5)
         
         # Plot the reconstructed room if available
         if self.reconstructed_room:
             room = Polygon(self.reconstructed_room, fill=False, edgecolor='purple', 
                           linewidth=2, linestyle='--')
-            ax.add_patch(room)
+            ax_path.add_patch(room)
         
-        ax.set_xlabel('X (meters)')
-        ax.set_ylabel('Y (meters)')
-        ax.set_title('Simulated Path and Radar Readings')
+        ax_path.set_xlabel('X (meters)')
+        ax_path.set_ylabel('Y (meters)')
+        ax_path.set_title('Simulated Path and Radar Readings')
         
-        ax.set_aspect('equal')
+        ax_path.set_aspect('equal')
         
         min_x = min(min(pos[0] for pos in self.positions), min(point[0] for point in self.radar_points))
         max_x = max(max(pos[0] for pos in self.positions), max(point[0] for point in self.radar_points))
@@ -253,16 +317,53 @@ class SimulationDataProcessor:
         max_y = max(max(pos[1] for pos in self.positions), max(point[1] for point in self.radar_points))
         
         padding = 2.0
-        ax.set_xlim(min_x - padding, max_x + padding)
-        ax.set_ylim(min_y - padding, max_y + padding)
+        ax_path.set_xlim(min_x - padding, max_x + padding)
+        ax_path.set_ylim(min_y - padding, max_y + padding)
         
-        ax.grid(True, linestyle='--', alpha=0.7)
+        ax_path.grid(True, linestyle='--', alpha=0.7)
+        
+        # Setup for acceleration plot
+        has_accel_data = 'accel_x' in self.sensor_data[0]
+        timestamps = [reading['timestamp'] for reading in self.sensor_data]
+        timestamps = [(t - timestamps[0])/1000.0 for t in timestamps]  # Convert to seconds from start
+        
+        if has_accel_data:
+            accel_x = [reading['accel_x'] for reading in self.sensor_data]
+            accel_y = [reading['accel_y'] for reading in self.sensor_data]
+            accel_z = [reading['accel_z'] for reading in self.sensor_data]
+            
+            accel_x_line, = ax_accel.plot([], [], 'r-', label='Accel X')
+            accel_y_line, = ax_accel.plot([], [], 'g-', label='Accel Y')
+            accel_z_line, = ax_accel.plot([], [], 'b-', label='Accel Z')
+            current_time_marker = ax_accel.axvline(x=0, color='k', linestyle='--')
+            
+            ax_accel.set_xlabel('Time (seconds)')
+            ax_accel.set_ylabel('Acceleration (m/s²)')
+            ax_accel.set_title('IMU Acceleration Data')
+            
+            # Set y limits for acceleration
+            ax_accel.set_xlim(0, timestamps[-1])
+            max_accel = max(max(abs(a) for a in accel_x), max(abs(a) for a in accel_y), max(abs(a) for a in accel_z))
+            ax_accel.set_ylim(-max_accel * 1.1, max_accel * 1.1)
+            
+            ax_accel.legend()
+            ax_accel.grid(True, linestyle='--', alpha=0.7)
+        
+        plt.tight_layout()
         
         def init():
             path_line.set_data([], [])
             position_marker.set_data([], [])
             radar_line.set_data([], [])
             radar_points.set_offsets(np.empty((0, 2)))
+            
+            if has_accel_data:
+                accel_x_line.set_data([], [])
+                accel_y_line.set_data([], [])
+                accel_z_line.set_data([], [])
+                current_time_marker.set_xdata([0])
+                return path_line, position_marker, radar_line, radar_points, accel_x_line, accel_y_line, accel_z_line, current_time_marker
+            
             return path_line, position_marker, radar_line, radar_points
         
         def animate(i):
@@ -283,6 +384,14 @@ class SimulationDataProcessor:
             # Plot all radar points up to the current frame
             radar_data = np.array(self.radar_points[:i+1])
             radar_points.set_offsets(radar_data)
+            
+            # Update acceleration plot
+            if has_accel_data:
+                accel_x_line.set_data(timestamps[:i+1], accel_x[:i+1])
+                accel_y_line.set_data(timestamps[:i+1], accel_y[:i+1])
+                accel_z_line.set_data(timestamps[:i+1], accel_z[:i+1])
+                current_time_marker.set_xdata([timestamps[i]])
+                return path_line, position_marker, radar_line, radar_points, accel_x_line, accel_y_line, accel_z_line, current_time_marker
             
             return path_line, position_marker, radar_line, radar_points
         
