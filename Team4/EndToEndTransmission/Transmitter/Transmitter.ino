@@ -56,6 +56,18 @@ void setup() {
   }
   Serial.print("Set Freq to: "); Serial.println(RF95_FREQ);
   
+  // trying to force LoRa mode:
+  rf95.spiWrite(0x01, 0x81);
+
+  // Manually configure modem settings for 250 kHz bandwidth
+  RH_RF95::ModemConfig config = {
+    0x92, // RegModemConfig1: Bw = 250 kHz, Cr = 4/5
+    0x74, // RegModemConfig2: SF = 7, TxContinuousMode = 0
+    0x04  // RegModemConfig3: LowDataRateOptimize off, AgcAutoOn on
+  };
+
+  rf95.setModemRegisters(&config);
+
   // Set transmitter power
   rf95.setTxPower(23, false);
   
