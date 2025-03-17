@@ -15,4 +15,11 @@ Figma link (Wireframes): https://www.figma.com/design/KQh2sRpxNxaPQl93MTJZRt/TDP
 
 ## Tests folder
 - tests for pipeline (for now)
+
+## Handling data
+- Update map every second or so, act like COD so UAV updates so it looks cleaner
+- Workflow:
+  - In takes json packet every ...
+  - converts/normalises (radar and IMU data scaled to fit) it to map or layout
+  - Displays the changes every 1 sec
   
