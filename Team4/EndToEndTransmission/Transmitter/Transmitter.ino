@@ -67,7 +67,7 @@ void setup() {
   };
 
   rf95.setModemRegisters(&config);
-
+  rf95.setSpreadingFactor(10);
   // Set transmitter power
   rf95.setTxPower(23, false);
   

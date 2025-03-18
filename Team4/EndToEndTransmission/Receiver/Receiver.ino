@@ -50,8 +50,9 @@ void setup() {
     0x04  // RegModemConfig3: LowDataRateOptimize off, AgcAutoOn on
   };
 
-  rf95.setModemRegisters(&config);
 
+  rf95.setModemRegisters(&config);
+  rf95.setSpreadingFactor(10);
   rf95.setTxPower(23, false);
 
 }
@@ -95,9 +96,19 @@ void loop() {
 uint16_t lastSequence = 0;
 uint16_t packetsLost = 0;
 bool firstPacket = true;
+unsigned long lastPacketTime = 0;  // Track time of last packet
+float packetRate = 0.0;           // Packets per second
 
 // Convert the received string format data to JSON
 void convertToJson(char* input, char* jsonOutput, size_t maxSize) {
+  // Calculate packet rate
+  unsigned long currentTime = millis();
+  if (lastPacketTime > 0) {
+    float timeDiff = (currentTime - lastPacketTime) / 1000.0; // Convert to seconds
+    packetRate = 1.0 / timeDiff; // Packets per second
+  }
+  lastPacketTime = currentTime;
+
   // Initialize JSON string
   strcpy(jsonOutput, "{");
   
@@ -152,6 +163,11 @@ void convertToJson(char* input, char* jsonOutput, size_t maxSize) {
       
       // Add packet loss stats to JSON
       sprintf(jsonOutput + strlen(jsonOutput), ",\"packets_lost\":%d", packetsLost);
+      
+      // Add packet rate to JSON
+      char rateStr[15];
+      dtostrf(packetRate, 1, 2, rateStr);
+      sprintf(jsonOutput + strlen(jsonOutput), ",\"packet_rate\":%s", rateStr);
     }
     else if (token[0] == 'P' && token[1] == ':') {  // Pitch
       strcpy(key, "\"pitch\"");

@@ -11,14 +11,16 @@ from matplotlib.animation import FuncAnimation
 import matplotlib.dates as mdates
 from collections import deque
 import threading
+import numpy as np
 
 class SensorDataProcessor:
-    def __init__(self, com_port, baud_rate=9600):
+    def __init__(self, com_port, baud_rate=9600, rolling_window=40):
         self.com_port = com_port
         self.baud_rate = baud_rate
         self.serial_conn = None
         self.raw_log_file = None
         self.processed_log_file = None
+        self.rolling_window = rolling_window  # Size of the rolling window for averaging
         
         # Create log directory if it doesn't exist
         os.makedirs('logs', exist_ok=True)
@@ -40,8 +42,16 @@ class SensorDataProcessor:
         self.packets_received = deque(maxlen=100)
         self.packets_lost = deque(maxlen=100)
         self.loss_percentage = deque(maxlen=100)
+        self.rolling_loss_percentage = deque(maxlen=100)  # New for rolling average
+        
+        # Window for calculating true rolling packet loss
+        # This will track actual packet reception success/failure in the window
+        self.packet_window = deque(maxlen=rolling_window)  # 1 for received, 0 for lost
+        
+        # Cumulative counters (for overall statistics)
         self.total_packets_received = 0
         self.total_packets_lost = 0
+        self.prev_sequence = None  # Track previous sequence number to detect losses
         self.plot_active = False
     
     def connect(self):
@@ -71,6 +81,20 @@ class SensorDataProcessor:
         # Stop the plotting
         self.plot_active = False
     
+    def calculate_rolling_loss_percentage(self):
+        """Calculate actual rolling packet loss percentage based on recent packet history"""
+        if not self.packet_window:
+            return 0.0
+            
+        # Count number of lost packets (0s) in the window
+        lost_packets = self.packet_window.count(0)
+        total_packets = len(self.packet_window)
+        
+        # Calculate percentage
+        if total_packets > 0:
+            return (lost_packets / total_packets) * 100
+        return 0.0
+    
     def process_data(self, json_data):
         """Process the sensor data and extract useful information"""
         try:
@@ -84,34 +108,66 @@ class SensorDataProcessor:
             # Calculate cardinal direction from yaw
             cardinal_direction = self._get_cardinal_direction(data.get('yaw', 0))
             
-            # Get packet sequence and loss information
-            sequence = data.get('sequence', 0)
-            packets_lost = data.get('packets_lost', 0)
+            # Get packet sequence and analyze packet loss
+            current_sequence = data.get('sequence', 0)
             
-            # Update plot data
             with self.plot_lock:
+                # Increment total received counter
                 self.total_packets_received += 1
-                self.total_packets_lost = packets_lost
                 
-                # Calculate loss percentage
+                # Check for packet loss by analyzing sequence numbers
+                packets_lost_now = 0
+                if self.prev_sequence is not None:
+                    # Calculate how many packets we expected vs. received
+                    expected_sequence = (self.prev_sequence + 1) % 65536  # Assuming 16-bit sequence counter
+                    if current_sequence != expected_sequence:
+                        # Calculate how many packets were lost (handle wraparound)
+                        if current_sequence > expected_sequence:
+                            packets_lost_now = current_sequence - expected_sequence
+                        else:
+                            packets_lost_now = (65536 - expected_sequence) + current_sequence
+                        
+                        # Update total packets lost
+                        self.total_packets_lost += packets_lost_now
+                        
+                        # Add lost packet markers to the window (0 = lost packet)
+                        for _ in range(packets_lost_now):
+                            self.packet_window.append(0)
+                
+                # Store this sequence for next comparison
+                self.prev_sequence = current_sequence
+                
+                # Add received packet marker to window (1 = received packet)
+                self.packet_window.append(1)
+                
+                # Calculate instantaneous loss percentage (overall since start)
                 if self.total_packets_received + self.total_packets_lost > 0:
                     loss_percent = (self.total_packets_lost / (self.total_packets_received + self.total_packets_lost)) * 100
                 else:
                     loss_percent = 0
                 
+                # Calculate actual rolling percentage based on window
+                rolling_loss = self.calculate_rolling_loss_percentage()
+                
+                # Update plot data collections
                 self.time_data.append(timestamp)
                 self.packets_received.append(self.total_packets_received)
                 self.packets_lost.append(self.total_packets_lost)
                 self.loss_percentage.append(loss_percent)
+                self.rolling_loss_percentage.append(rolling_loss)
             
             # Create a processed data record
             processed_data = {
                 "time": current_time,
                 "arduino_time_ms": data.get('timestamp', 0),
                 "packet": {
-                    "sequence": sequence,
-                    "packets_lost": packets_lost,
-                    "loss_percentage": loss_percent
+                    "sequence": current_sequence,
+                    "packets_lost_now": packets_lost_now,
+                    "total_packets_lost": self.total_packets_lost,
+                    "total_packets_received": self.total_packets_received,
+                    "overall_loss_percentage": loss_percent,
+                    "rolling_loss_percentage": rolling_loss,
+                    "window_size": self.rolling_window
                 },
                 "orientation": {
                     "pitch": data.get('pitch', 0),
@@ -130,11 +186,13 @@ class SensorDataProcessor:
                 }
             }
             
-            # Create a human-readable summary with packet loss percentage
-            loss_percentage_str = f"{loss_percent:.2f}%"
+            # Create a human-readable summary
+            window_info = f"last {len(self.packet_window)}/{self.rolling_window} packets"
             summary = (
                 f"Time: {current_time}\n"
-                f"Packet: Seq={sequence} (Lost: {packets_lost}, Loss Rate: {loss_percentage_str})\n"
+                f"Packet: Seq={current_sequence} "
+                f"(Lost now: {packets_lost_now}, Total lost: {self.total_packets_lost})\n"
+                f"Loss Rate: {loss_percent:.2f}% (Overall), {rolling_loss:.2f}% ({window_info})\n"
                 f"Orientation: Pitch={data.get('pitch', 0):.2f}°, "
                 f"Roll={data.get('roll', 0):.2f}°, "
                 f"Yaw={data.get('yaw', 0):.2f}° ({cardinal_direction})\n"
@@ -182,97 +240,6 @@ class SensorDataProcessor:
         # Default in case of an error
         return "Unknown"
     
-    def initialize_plot(self):
-        """Initialize the matplotlib plot for packet loss visualization"""
-        # Use non-interactive backend if running headless
-        try:
-            plt.ion()  # Enable interactive mode
-            self.fig, self.ax = plt.subplots(figsize=(10, 6))
-            self.ax.set_title('Packet Loss Percentage')
-            self.ax.set_xlabel('Time')
-            self.ax.set_ylabel('Loss Percentage (%)')
-            self.ax.grid(True)
-            
-            # Setup time formatting for x-axis
-            self.ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
-            self.ax.xaxis.set_tick_params(rotation=45)
-            
-            # Use dummy time values initially (convert to matplotlib date numbers)
-            now = datetime.datetime.now()
-            initial_times = [mdates.date2num(now)]
-            initial_values = [0]
-            self.loss_line, = self.ax.plot(initial_times, initial_values, 'r-', label='Packet Loss %')
-            
-            self.ax.legend()
-            self.ax.set_ylim(0, 100)  # Loss percentage range
-            plt.tight_layout()
-            
-            # Add initial info text
-            self.info_text = self.ax.text(0.02, 0.95, 
-                                         f'Current Loss: 0.00%\n'
-                                         f'Total Packets: 0\n'
-                                         f'Lost Packets: 0',
-                                         transform=self.ax.transAxes,
-                                         fontsize=10, verticalalignment='top',
-                                         bbox=dict(facecolor='white', alpha=0.5))
-            
-            self.fig.canvas.draw()
-            self.fig.canvas.flush_events()
-            print("Plot initialized successfully")
-        except Exception as e:
-            print(f"Error initializing plot: {e}")
-            self.plot_active = False
-    
-    def update_plot(self, frame):
-        """Update function for the animation"""
-        if not self.plot_active:
-            return
-        
-        try:
-            with self.plot_lock:
-                if len(self.time_data) > 0:
-                    # Convert datetime objects to matplotlib dates
-                    times = [mdates.date2num(t) for t in self.time_data]
-                    loss_pcts = list(self.loss_percentage)
-                    
-                    # Update the line data
-                    self.loss_line.set_xdata(times)
-                    self.loss_line.set_ydata(loss_pcts)
-                    
-                    # Adjust x-axis to show the most recent data
-                    self.ax.set_xlim(times[0], times[-1])
-                    self.fig.autofmt_xdate()  # Auto-format the x date labels
-                    
-                    # If we have significant loss, adjust y-axis
-                    if loss_pcts and max(loss_pcts) > 0:
-                        max_loss = max(loss_pcts)
-                        y_max = min(100, max(10, max_loss * 1.2))  # Set reasonable upper limit
-                        self.ax.set_ylim(0, y_max)
-                    
-                    # Update info text
-                    if hasattr(self, 'info_text') and self.info_text:
-                        self.info_text.remove()
-                        
-                    latest_loss = loss_pcts[-1] if loss_pcts else 0
-                    total_received = self.total_packets_received
-                    total_lost = self.total_packets_lost
-                    
-                    self.info_text = self.ax.text(0.02, 0.95, 
-                                                f'Current Loss: {latest_loss:.2f}%\n'
-                                                f'Total Packets: {total_received}\n'
-                                                f'Lost Packets: {total_lost}',
-                                                transform=self.ax.transAxes,
-                                                fontsize=10, verticalalignment='top',
-                                                bbox=dict(facecolor='white', alpha=0.5))
-                    
-                    # Redraw the plot
-                    self.fig.canvas.draw()
-                    self.fig.canvas.flush_events()
-                    
-        except Exception as e:
-            print(f"Error updating plot: {e}")
-            self.plot_active = False
-    
     def start_plotting(self):
         """Start the plotting in the main thread using a non-blocking approach"""
         try:
@@ -288,13 +255,15 @@ class SensorDataProcessor:
             self.ax.set_ylim(0, 10)  # Start with a small range
             self.ax.grid(True)
             
-            # Create empty line
-            self.line, = self.ax.plot([], [], 'r-', label='Packet Loss %')
+            # Create empty lines for overall and rolling average
+            self.instant_line, = self.ax.plot([], [], 'r-', alpha=0.5, label='Overall Loss %')
+            self.rolling_line, = self.ax.plot([], [], 'b-', linewidth=2, label='Rolling Loss %')
             self.ax.legend()
             
             # Add initial text annotation
             self.info_text = self.ax.text(0.02, 0.95, 
-                                         f'Current Loss: 0.00%\n'
+                                         f'Overall Loss: 0.00%\n'
+                                         f'Rolling Loss: 0.00% (window={self.rolling_window})\n'
                                          f'Total Packets: 0\n'
                                          f'Lost Packets: 0',
                                          transform=self.ax.transAxes,
@@ -305,7 +274,7 @@ class SensorDataProcessor:
             self.fig.canvas.draw()
             plt.show(block=False)
             
-            print("Plot initialized in main thread")
+            print(f"Plot initialized in main thread (rolling window: {self.rolling_window} samples)")
             
         except Exception as e:
             print(f"Failed to start plotting: {e}")
@@ -319,28 +288,37 @@ class SensorDataProcessor:
         try:
             with self.plot_lock:
                 loss_pcts = list(self.loss_percentage)
+                rolling_loss_pcts = list(self.rolling_loss_percentage)
+                
                 if loss_pcts:
                     # Use sample numbers for x-axis
                     sample_nums = list(range(len(loss_pcts)))
                     
                     # Update the line data
-                    self.line.set_data(sample_nums, loss_pcts)
+                    self.instant_line.set_data(sample_nums, loss_pcts)
+                    self.rolling_line.set_data(sample_nums, rolling_loss_pcts)
                     
                     # Update axis limits
                     self.ax.set_xlim(0, max(10, len(sample_nums)))
                     
-                    # Update y-axis if needed
-                    if max(loss_pcts) > 0:
-                        y_max = min(100, max(10, max(loss_pcts) * 1.2))
+                    # Update y-axis if needed - use the max of both datasets
+                    max_value = max(max(loss_pcts) if loss_pcts else 0, 
+                                    max(rolling_loss_pcts) if rolling_loss_pcts else 0)
+                    if max_value > 0:
+                        y_max = min(100, max(10, max_value * 1.2))
                         self.ax.set_ylim(0, y_max)
                     
                     # Update info text
                     latest_loss = loss_pcts[-1] if loss_pcts else 0
+                    latest_rolling = rolling_loss_pcts[-1] if rolling_loss_pcts else 0
+                    
                     if hasattr(self, 'info_text') and self.info_text:
                         self.info_text.remove()
                     
+                    window_info = f"last {len(self.packet_window)}/{self.rolling_window} packets"
                     self.info_text = self.ax.text(0.02, 0.95, 
-                                                 f'Current Loss: {latest_loss:.2f}%\n'
+                                                 f'Overall Loss: {latest_loss:.2f}%\n'
+                                                 f'Rolling Loss: {latest_rolling:.2f}% ({window_info})\n'
                                                  f'Total Packets: {self.total_packets_received}\n'
                                                  f'Lost Packets: {self.total_packets_lost}',
                                                  transform=self.ax.transAxes,
@@ -393,9 +371,6 @@ class SensorDataProcessor:
                             
                             # Print summary to console
                             print(summary)
-                            
-                            # Flag that we should update the plot soon
-                            new_data = True
                     else:
                         # Print non-JSON lines as debug info
                         print(f"Debug: {line}")
@@ -449,6 +424,8 @@ def main():
     parser.add_argument('--baud', type=int, default=9600, help='Baud rate (default: 9600)')
     parser.add_argument('--list', action='store_true', help='List available serial ports and exit')
     parser.add_argument('--no-plot', action='store_true', help='Disable live plotting')
+    parser.add_argument('--window', type=int, default=40, 
+                       help='Size of the rolling window for averaging packet loss (default: 20)')
     
     args = parser.parse_args()
     
@@ -487,7 +464,7 @@ def main():
                 return
     
     print(f"Using port: {port}")
-    processor = SensorDataProcessor(port, args.baud)
+    processor = SensorDataProcessor(port, args.baud, rolling_window=args.window)
     
     # Check if matplotlib is available for plotting
     if args.no_plot:
@@ -495,7 +472,7 @@ def main():
     else:
         try:
             import matplotlib
-            print("Live plotting of packet loss enabled.")
+            print(f"Live plotting of packet loss enabled with rolling window of {args.window} samples.")
         except ImportError:
             print("Matplotlib not available. Live plotting disabled.")
             args.no_plot = True
