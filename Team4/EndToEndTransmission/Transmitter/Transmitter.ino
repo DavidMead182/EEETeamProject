@@ -14,6 +14,11 @@ RH_RF95 rf95(RFM95_CS, RFM95_INT);
 #define UPDATE_INTERVAL 100  // ms between sensor readings (10Hz)
 #define MAX_SEQUENCE 0xFFF   // 12-bit sequence number (0 to 4095)
 
+// #define SPI_BUS SPI1  // Uncomment if using SPI1
+// #define SPI_BUS SPI2  // Uncomment if using SPI2
+
+
+
 // Global sequence number for tracking packets
 uint16_t sequenceNumber = 0;
 

@@ -53,6 +53,9 @@ class SensorDataProcessor:
         self.total_packets_lost = 0
         self.prev_sequence = None  # Track previous sequence number to detect losses
         self.plot_active = False
+        
+        # Add packet rate tracking
+        self.packet_rates = deque(maxlen=100)
     
     def connect(self):
         """Connect to the Arduino via serial port"""
@@ -167,7 +170,8 @@ class SensorDataProcessor:
                     "total_packets_received": self.total_packets_received,
                     "overall_loss_percentage": loss_percent,
                     "rolling_loss_percentage": rolling_loss,
-                    "window_size": self.rolling_window
+                    "window_size": self.rolling_window,
+                    "packet_rate": data.get('packet_rate', 0.0)  # Add packet rate
                 },
                 "orientation": {
                     "pitch": data.get('pitch', 0),
@@ -186,12 +190,16 @@ class SensorDataProcessor:
                 }
             }
             
+            # Update packet rate for plotting
+            self.packet_rates.append(data.get('packet_rate', 0.0))
+            
             # Create a human-readable summary
             window_info = f"last {len(self.packet_window)}/{self.rolling_window} packets"
             summary = (
                 f"Time: {current_time}\n"
                 f"Packet: Seq={current_sequence} "
                 f"(Lost now: {packets_lost_now}, Total lost: {self.total_packets_lost})\n"
+                f"Rate: {data.get('packet_rate', 0.0):.2f} packets/sec\n"
                 f"Loss Rate: {loss_percent:.2f}% (Overall), {rolling_loss:.2f}% ({window_info})\n"
                 f"Orientation: Pitch={data.get('pitch', 0):.2f}°, "
                 f"Roll={data.get('roll', 0):.2f}°, "
@@ -247,26 +255,39 @@ class SensorDataProcessor:
             
             # Initialize the plot in the main thread
             plt.ion()  # Turn on interactive mode
-            self.fig = plt.figure(figsize=(10, 6))
-            self.ax = self.fig.add_subplot(111)
-            self.ax.set_title('Packet Loss Percentage')
-            self.ax.set_xlabel('Sample Number')
-            self.ax.set_ylabel('Loss Percentage (%)')
-            self.ax.set_ylim(0, 10)  # Start with a small range
-            self.ax.grid(True)
+            self.fig, (self.ax1, self.ax2) = plt.subplots(2, 1, figsize=(10, 8))
             
-            # Create empty lines for overall and rolling average
-            self.instant_line, = self.ax.plot([], [], 'r-', alpha=0.5, label='Overall Loss %')
-            self.rolling_line, = self.ax.plot([], [], 'b-', linewidth=2, label='Rolling Loss %')
-            self.ax.legend()
+            # Setup loss percentage plot
+            self.ax1.set_title('Packet Loss Percentage')
+            self.ax1.set_xlabel('Sample Number')
+            self.ax1.set_ylabel('Loss Percentage (%)')
+            self.ax1.set_ylim(0, 10)
+            self.ax1.grid(True)
+            
+            # Setup packet rate plot
+            self.ax2.set_title('Packet Rate')
+            self.ax2.set_xlabel('Sample Number')
+            self.ax2.set_ylabel('Packets/Second')
+            self.ax2.set_ylim(0, 12)  # Adjust based on expected rates
+            self.ax2.grid(True)
+            
+            # Create lines for both plots
+            self.instant_line, = self.ax1.plot([], [], 'r-', alpha=0.5, label='Overall Loss %')
+            self.rolling_line, = self.ax1.plot([], [], 'b-', linewidth=2, label='Rolling Loss %')
+            self.rate_line, = self.ax2.plot([], [], 'g-', linewidth=2, label='Packet Rate')
+            
+            self.ax1.legend()
+            self.ax2.legend()
+            
+            plt.tight_layout()
             
             # Add initial text annotation
-            self.info_text = self.ax.text(0.02, 0.95, 
+            self.info_text = self.ax1.text(0.02, 0.95, 
                                          f'Overall Loss: 0.00%\n'
                                          f'Rolling Loss: 0.00% (window={self.rolling_window})\n'
                                          f'Total Packets: 0\n'
                                          f'Lost Packets: 0',
-                                         transform=self.ax.transAxes,
+                                         transform=self.ax1.transAxes,
                                          fontsize=10, verticalalignment='top',
                                          bbox=dict(facecolor='white', alpha=0.5))
             
@@ -281,7 +302,7 @@ class SensorDataProcessor:
             self.plot_active = False
     
     def update_plot(self):
-        """Update the plot with current data - called from main thread"""
+        """Update the plot with current data"""
         if not self.plot_active:
             return
             
@@ -299,14 +320,14 @@ class SensorDataProcessor:
                     self.rolling_line.set_data(sample_nums, rolling_loss_pcts)
                     
                     # Update axis limits
-                    self.ax.set_xlim(0, max(10, len(sample_nums)))
+                    self.ax1.set_xlim(0, max(10, len(sample_nums)))
                     
                     # Update y-axis if needed - use the max of both datasets
                     max_value = max(max(loss_pcts) if loss_pcts else 0, 
                                     max(rolling_loss_pcts) if rolling_loss_pcts else 0)
                     if max_value > 0:
                         y_max = min(100, max(10, max_value * 1.2))
-                        self.ax.set_ylim(0, y_max)
+                        self.ax1.set_ylim(0, y_max)
                     
                     # Update info text
                     latest_loss = loss_pcts[-1] if loss_pcts else 0
@@ -316,19 +337,29 @@ class SensorDataProcessor:
                         self.info_text.remove()
                     
                     window_info = f"last {len(self.packet_window)}/{self.rolling_window} packets"
-                    self.info_text = self.ax.text(0.02, 0.95, 
+                    self.info_text = self.ax1.text(0.02, 0.95, 
                                                  f'Overall Loss: {latest_loss:.2f}%\n'
                                                  f'Rolling Loss: {latest_rolling:.2f}% ({window_info})\n'
                                                  f'Total Packets: {self.total_packets_received}\n'
                                                  f'Lost Packets: {self.total_packets_lost}',
-                                                 transform=self.ax.transAxes,
+                                                 transform=self.ax1.transAxes,
                                                  fontsize=10, verticalalignment='top',
                                                  bbox=dict(facecolor='white', alpha=0.5))
                     
                     # Redraw the plot
                     self.fig.canvas.draw_idle()
                     self.fig.canvas.flush_events()
-                    
+                
+                # Update packet rate plot
+                rate_data = list(self.packet_rates)
+                if rate_data:
+                    sample_nums = list(range(len(rate_data)))
+                    self.rate_line.set_data(sample_nums, rate_data)
+                    self.ax2.set_xlim(0, max(10, len(sample_nums)))
+                    max_rate = max(rate_data)
+                    if max_rate > 0:
+                        self.ax2.set_ylim(0, max(12, max_rate * 1.2))
+                
         except Exception as e:
             print(f"Error updating plot: {e}")
             self.plot_active = False

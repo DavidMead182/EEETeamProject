@@ -7,6 +7,10 @@
 
 #define RF95_FREQ 868.0
 
+// #define SPI_BUS SPI1  // Uncomment if using SPI1
+// #define SPI_BUS SPI2  // Uncomment if using SPI2
+
+
 // Singleton instance of the radio driver
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
 
@@ -55,6 +59,7 @@ void setup() {
   rf95.setSpreadingFactor(10);
   rf95.setTxPower(23, false);
 
+  rateUpdateTime = millis();
 }
 
 void loop() {
@@ -98,16 +103,19 @@ uint16_t packetsLost = 0;
 bool firstPacket = true;
 unsigned long lastPacketTime = 0;  // Track time of last packet
 float packetRate = 0.0;           // Packets per second
+unsigned long rateUpdateTime = 0;  // Time of last rate calculation
+uint16_t packetCount = 0;         // Count packets for rate calculation
 
 // Convert the received string format data to JSON
 void convertToJson(char* input, char* jsonOutput, size_t maxSize) {
-  // Calculate packet rate
+  // Calculate packet rate every second
   unsigned long currentTime = millis();
-  if (lastPacketTime > 0) {
-    float timeDiff = (currentTime - lastPacketTime) / 1000.0; // Convert to seconds
-    packetRate = 1.0 / timeDiff; // Packets per second
+  if (currentTime - rateUpdateTime >= 1000) {  // Update rate every second
+    packetRate = (float)packetCount * 1000.0 / (float)(currentTime - rateUpdateTime);
+    packetCount = 0;  // Reset counter
+    rateUpdateTime = currentTime;
   }
-  lastPacketTime = currentTime;
+  packetCount++;  // Increment packet counter
 
   // Initialize JSON string
   strcpy(jsonOutput, "{");
@@ -227,6 +235,10 @@ void convertToJson(char* input, char* jsonOutput, size_t maxSize) {
     // Get next token
     token = strtok(NULL, ",");
   }
+  
+  // Add packet loss stats and rate to JSON
+  sprintf(jsonOutput + strlen(jsonOutput), ",\"packets_lost\":%d,\"packet_rate\":%.2f", 
+          packetsLost, packetRate);
   
   // Close the JSON object
   strcat(jsonOutput, "}");
