@@ -36,6 +36,7 @@ q = AquaFilter.estimate(a[0], m[0])
 threshold = 0.3 
 Gain = 0.1
 
+#Simulating feeding the data in live
 for i in range(1,len(a)):
 	#q gives the quaternion output from the IMU
 	q = AquaFilter.updateMARG(q, gyr = g[i], acc = a[i], mag = m[i])
