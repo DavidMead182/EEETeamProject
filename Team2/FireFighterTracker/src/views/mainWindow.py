@@ -23,7 +23,6 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.stack)
         self.setGeometry(100, 100, 800, 600)
         self.setWindowIcon(QtGui.QIcon("assets/icons/LOGO.png"))
-        self.initWindow()
 
         self.mainPage = self.initWindow()
 
