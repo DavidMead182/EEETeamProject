@@ -1,16 +1,17 @@
-from PyQt5.QtWidgets import QApplication, QGraphicsScene, QGraphicsView, QGraphicsRectItem, QGraphicsEllipseItem, QVBoxLayout, QWidget
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QGraphicsView, QGraphicsScene, 
+                            QGraphicsRectItem, QGraphicsEllipseItem)
 from PyQt5.QtGui import QBrush
 from PyQt5.QtCore import Qt, QEvent
-from controllers.imageToArray import floorplan_to_maze  # Ensure this function is correctly implemented
-
-# Constants
-TILE_SIZE = 1  # Size of each tile
-PLAYER_SIZE = 10  # Size of red dot
-TRAIL_SIZE = 5  # Number of steps to keep the trail
+from controllers.imageToArray import floorplan_to_maze
 
 class FloorPlan(QWidget):
-    def __init__(self, floor_plan_path, width=None, height=None, blur_effect=100, parent=None):
+    def __init__(self, floor_plan_path, width=None, height=None, blur_effect=100, 
+                 player_size=10, tile_size=1, trail_size=5, parent=None):
         super().__init__(parent)
+        self.player_size = player_size
+        self.tile_size = tile_size
+        self.trail_size = trail_size
+        
         self.layout = QVBoxLayout(self)
         self.view = QGraphicsView()
         self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -21,16 +22,14 @@ class FloorPlan(QWidget):
         self.scene = QGraphicsScene()
         self.view.setScene(self.scene)
 
-        # Generate the floor plan
-        floor_plan = floorplan_to_maze(floor_plan_path, width, height, blur_effect)
-
         # Store walls, players, and trail
         self.walls = []
         self.players = []
         self.trail = []
 
-        # Load floor plan and draw
-        self.load_floor_plan(floor_plan)
+        # Generate and load the floor plan
+        self.floor_plan = floorplan_to_maze(floor_plan_path, width, height, blur_effect)
+        self.load_floor_plan()
 
         # Install event filter to capture key events
         self.view.installEventFilter(self)
@@ -40,23 +39,29 @@ class FloorPlan(QWidget):
         self.view.setAlignment(Qt.AlignLeft | Qt.AlignTop)
         self.setLayout(self.layout)
 
-    def load_floor_plan(self, floor_plan):
+    def load_floor_plan(self):
         """Load and draw the floor plan with walls and player starting position."""
-        for row in range(len(floor_plan)):
-            for col in range(len(floor_plan[row])):
-                x, y = col * TILE_SIZE, row * TILE_SIZE
-                if floor_plan[row][col] == 1:  # Wall
-                    wall = QGraphicsRectItem(x, y, TILE_SIZE, TILE_SIZE)
+        self.scene.clear()  # Clear existing items
+        self.walls = []
+        self.players = []
+        self.trail = []
+
+        for row in range(len(self.floor_plan)):
+            for col in range(len(self.floor_plan[row])):
+                x, y = col * self.tile_size, row * self.tile_size
+                if self.floor_plan[row][col] == 1:  # Wall
+                    wall = QGraphicsRectItem(x, y, self.tile_size, self.tile_size)
                     wall.setBrush(QBrush(Qt.black))
                     self.scene.addItem(wall)
                     self.walls.append(wall)
                 else:  # Empty space
-                    if not self.players:  # Add red dot at the first empty space
-                        self.add_red_dot(x + TILE_SIZE // 4, y + TILE_SIZE // 4)
+                    if not self.players:  # Add player at first empty space
+                        self.add_player(x + self.tile_size // 2 - self.player_size // 2, 
+                                       y + self.tile_size // 2 - self.player_size // 2)
 
-    def add_red_dot(self, x, y):
-        """Add a red dot (player) at the specified coordinates."""
-        player = QGraphicsEllipseItem(x, y, PLAYER_SIZE, PLAYER_SIZE)
+    def add_player(self, x, y):
+        """Add a player at the specified coordinates."""
+        player = QGraphicsEllipseItem(x, y, self.player_size, self.player_size)
         player.setBrush(QBrush(Qt.red))
         self.scene.addItem(player)
         self.players.append(player)
@@ -66,46 +71,48 @@ class FloorPlan(QWidget):
         if event.type() == QEvent.KeyPress and source is self.view:
             self.keyPressEvent(event)
             return True
-        return super(FloorPlan, self).eventFilter(source, event)
+        return super().eventFilter(source, event)
 
     def keyPressEvent(self, event):
         """Handle key press events for player movement."""
         if not self.players:
             return
 
-        player = self.players[0]  # Single player for now
+        player = self.players[0]
         dx, dy = 0, 0
 
         if event.key() == Qt.Key_Left:
-            dx = -PLAYER_SIZE
+            dx = -self.player_size
         elif event.key() == Qt.Key_Right:
-            dx = PLAYER_SIZE
+            dx = self.player_size
         elif event.key() == Qt.Key_Up:
-            dy = -PLAYER_SIZE
+            dy = -self.player_size
         elif event.key() == Qt.Key_Down:
-            dy = PLAYER_SIZE
+            dy = self.player_size
         else:
-            return  # Ignore other keys
+            return
 
         # Compute new position
         new_x = player.x() + dx
         new_y = player.y() + dy
 
         # Boundary check
-        if new_x < 0 or new_x + PLAYER_SIZE > self.view.width() or new_y < 0 or new_y + PLAYER_SIZE > self.view.height():
-            return  # Ignore movement that would leave the view
+        if (new_x < 0 or new_x + self.player_size > self.view.width() or 
+            new_y < 0 or new_y + self.player_size > self.view.height()):
+            return
 
         # Collision check
         player_rect = player.sceneBoundingRect().translated(dx, dy)
         if not any(wall.sceneBoundingRect().intersects(player_rect) for wall in self.walls):
             # Add current position to trail
-            trail_dot = QGraphicsEllipseItem(player.x(), player.y(), PLAYER_SIZE, PLAYER_SIZE)
+            trail_dot = QGraphicsEllipseItem(player.x(), player.y(), 
+                                           self.player_size, self.player_size)
             trail_dot.setBrush(QBrush(Qt.blue))
             self.scene.addItem(trail_dot)
             self.trail.append(trail_dot)
 
             # Remove old trail if it exceeds the limit
-            if len(self.trail) > TRAIL_SIZE:
+            if len(self.trail) > self.trail_size:
                 old_trail_dot = self.trail.pop(0)
                 self.scene.removeItem(old_trail_dot)
 
