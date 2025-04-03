@@ -22,6 +22,11 @@ float AccX;
 float AccY;
 float AccZ;
 
+float AccAvg, GyroAvg, MagAvg;
+float AccNX, AccNY, AccNZ;
+float GyroNX, GyroNY, GyroNZ;
+float MagNX, MagNY, MagNZ;
+
 float biasRemoved[3] = {0, 0, 0};
 float ABias[3] = {-0.28071, -0.10724, 0.39683};
 float GBias[3] = {-0.00993, 0.01845, 0.00263};
@@ -152,28 +157,40 @@ void loop() {
     // ================================================================ //
     //                    Accelerometer Quaternion
     // ================================================================ //
+    //Finding average of the acceleration values to normalise them.
+    AccAvg = sqrt((AccX*AccX) + (AccY*AccY) + (AccZ*AccZ));
+    AccNX = AccX/AccAvg;
+    AccNY = AccY/AccAvg;
+    AccNZ = AccZ/AccAvg;
+
     if (AccZ >= 0){
-      q_acc[0] = - sqrt((AccX + 1) / 2);
-      q_acc[1] = - (AccY) / sqrt(2 * (1 + AccZ));
-      q_acc[2] = (AccZ) / sqrt(2 * (1 + AccZ));
+      q_acc[0] = - sqrt((AccNX + 1) / 2);
+      q_acc[1] = - (AccNY) / sqrt(2 * (1 + AccNZ));
+      q_acc[2] = (AccNZ) / sqrt(2 * (1 + AccNZ));
       q_acc[3] = 0;
     }
     else{
-      q_acc[0] = - (AccY) / sqrt(2 * (1 - AccZ));
-      q_acc[1] = sqrt((1 - AccZ) / 2);
+      q_acc[0] = - (AccNY) / sqrt(2 * (1 - AccNZ));
+      q_acc[1] = sqrt((1 - AccNZ) / 2);
       q_acc[2] = 0;
-      q_acc[3] = (AccZ) / sqrt(2 * (1 - AccZ));
+      q_acc[3] = (AccNZ) / sqrt(2 * (1 - AccNZ));
     }
 
     // ============================================================ //
     //                      Gyroscope Quaternion
     // ============================================================ //
-    sG_x = sin(GyroX)/2;
-    cG_x = cos(GyroX)/2;
-    sG_y = sin(GyroY)/2;
-    cG_y = cos(GyroY)/2;
-    sG_z = sin(GyroZ)/2;
-    cG_z = cos(GyroZ)/2;
+    //Finding average of the gyroscope values to normalise them
+    GyroAvg = sqrt((GyroX*GyroX) + (GyroY*GyroY) + (GyroZ*GyroZ));
+    GyroNX = GyroX/GyroAvg;
+    GyroNY = GyroY/GyroAvg;
+    GyroNZ = GyroZ/GyroAvg;
+
+    sG_x = sin(GyroNX)/2;
+    cG_x = cos(GyroNX)/2;
+    sG_y = sin(GyroNY)/2;
+    cG_y = cos(GyroNY)/2;
+    sG_z = sin(GyroNZ)/2;
+    cG_z = cos(GyroNZ)/2;
     
     q_gyro[0] = cG_x * cG_y * cG_z + sG_x * sG_y * sG_z;
     q_gyro[1] = sG_x * cG_y * cG_z - cG_x * sG_y * sG_z;
@@ -183,16 +200,23 @@ void loop() {
     // ============================================================ //
     //                  Magnetometer Quaternion
     // ============================================================ //
+    //Finding average of the gyroscope values to normalise them
+    MagAvg = sqrt((MagX*MagX) + (MagY*MagY) + (GyroZ*GyroZ));
+    MagNX = MagX/MagAvg;
+    MagNY = MagY/MagAvg;
+    MagNZ = MagZ/MagAvg;
+
     // As q1 and q2 are always 0, do not need to update them
-    Gamma = (MagX * MagX) + (MagY * MagY);
+    Gamma = (MagNX * MagNX) + (MagNY * MagNY);
 
     if (MagX >= 0){
-      q_mag[0] = sqrt(Gamma + MagX*sqrt(Gamma)) / sqrt(2*Gamma);
-      q_mag[3] = MagY / sqrt(2 * (Gamma + MagX*sqrt(Gamma)));
+      q_mag[0] = sqrt(Gamma + MagNX*sqrt(Gamma)) / sqrt(2*Gamma);
+      q_mag[3] = MagNY / sqrt(2 * (Gamma + MagNX*sqrt(Gamma)));
     }
     else{
-      q_mag[0] = MagY / sqrt(2 * (Gamma - MagX*sqrt(Gamma)));
-      q_mag[3] = sqrt(Gamma - MagX*sqrt(Gamma)) / sqrt(2*Gamma);
+      q_mag[0] = MagNY / sqrt(2 * (Gamma - MagNX*sqrt(Gamma)));
+      q_mag[3] = sqrt(Gamma - MagNX*sqrt(Gamma)) / sqrt(2*Gamma);
     }
   }
 }
+
