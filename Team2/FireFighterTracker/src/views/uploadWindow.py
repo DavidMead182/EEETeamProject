@@ -11,8 +11,11 @@ class UploadWindow(QWidget):
         super().__init__()
         self.stack = stack
         self.filePath = None  # Initialize filePath to None
+        self.setWindowTitle("Firefighter UAV - Upload Page")
+        self.setGeometry(100, 100, 800, 600)
         self.initUI()
         self.apply_stylesheet("assets/stylesheets/base.qss")
+
 
     def initUI(self):
         layout = QVBoxLayout()

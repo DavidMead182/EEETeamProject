@@ -28,7 +28,7 @@ class MainWindow(QMainWindow):
         self.mainPage = self.initWindow()
 
         self.uploadPage = UploadWindow(self.stack)  # Pass the stack reference
-        self.noPage = NoWindow("No Page - Manual Setup", self.stack)  # Pass the stack reference
+        self.noPage = NoWindow("Firefighter UAV - No Page", self.stack)  # Pass the stack reference
         self.consolePage = Console("Console Page", self.stack)  # Pass the stack reference
 
         self.stack.addWidget(self.mainPage)

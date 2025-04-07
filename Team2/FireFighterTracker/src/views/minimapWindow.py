@@ -187,7 +187,7 @@ class MinimapWindow(QWidget):
     def open_upload_page(self):
         """Return to upload page"""
         self.stack.removeWidget(self)
-        self.stack.setCurrentIndex(1)
+        self.stack.setCurrentIndex(0)
 
     def apply_stylesheet(self, filename):
         """Apply stylesheet to window"""
