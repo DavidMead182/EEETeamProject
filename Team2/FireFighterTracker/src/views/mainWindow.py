@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import QComboBox
 from widgets.titleWidget import TitleWidget
 from views.uploadWindow import UploadWindow
 from views.noWindow import NoWindow
+from views.consoleWindow import Console
 import globalVariables
 
 TILE_SIZE = 1  # Size of each tile
@@ -28,10 +29,12 @@ class MainWindow(QMainWindow):
 
         self.uploadPage = UploadWindow(self.stack)  # Pass the stack reference
         self.noPage = NoWindow("No Page - Manual Setup", self.stack)  # Pass the stack reference
+        self.consolePage = Console("Console Page", self.stack)  # Pass the stack reference
 
         self.stack.addWidget(self.mainPage)
         self.stack.addWidget(self.uploadPage)
         self.stack.addWidget(self.noPage)
+        self.stack.addWidget(self.consolePage)
         self.apply_stylesheet("assets/stylesheets/base.qss")
         self.showMaximized()
         print("Log: MainWindow initialised and maximised")
@@ -75,10 +78,18 @@ class MainWindow(QMainWindow):
         self.com_port_dropdown.setFixedHeight(40)
         print("Log: COM port dropdown created")
 
+        btn_console = QPushButton("Console Page")
+        btn_console.setObjectName("btnYes")
+        btn_console.setFixedWidth(348)
+        btn_console.setFixedHeight(40)
+        btn_console.clicked.connect(self.on_console_button_clicked)
+        print("Log: 'Scan USB Port For Device' button created")
+
         layout.addWidget(titleCard)
         layout.addLayout(btn_layout)
         layout.addWidget(btn_scan_com, alignment=Qt.AlignCenter)
         layout.addWidget(self.com_port_dropdown, alignment=Qt.AlignCenter)
+        layout.addWidget(btn_console, alignment=Qt.AlignCenter)
 
         central_widget.setLayout(layout)
         print("Log: Main window layout initialised")
@@ -114,6 +125,17 @@ class MainWindow(QMainWindow):
             return
         
         self.stack.setCurrentWidget(self.noPage)
+
+    def on_console_button_clicked(self):
+        if not globalVariables.COM_PORT:
+            print("No COM port selected")
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Information)
+            msg.setText("No COM port selected. Please select a COM port first.")
+            msg.exec_()
+            return
+        
+        self.stack.setCurrentWidget(self.consolePage)
     
     def update_selected_com_port(self):
         selected_index = self.com_port_dropdown.currentIndex()
