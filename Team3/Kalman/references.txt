@@ -8,3 +8,6 @@ Gebre-Egziabher, D; Elkaim, GH; Powell, JD; Parkinson, BW. A non-linear, two-ste
 https://www.navlab.net/Publications/Introduction_to_Inertial_Navigation_and_Kalman_Filtering.pdf
 
 https://sparxeng.com/blog/software/imu-signal-processing-with-kalman-filter
+
+Extended Kalman filter using quaternions:
+https://ahrs.readthedocs.io/en/latest/filters/ekf.html
