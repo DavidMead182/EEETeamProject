@@ -7,16 +7,16 @@ from widgets.titleWidget import TitleWidget
 import PyQt5.QtGui as QtGui
 
 class MinimapWindow(QWidget):
-    def __init__(self, pixmap, filepath, stack):
+    def __init__(self,stack,filepath="assets/images/default.jpg"):
         super().__init__()
         self.stack = stack  # Store the reference to the stack
         self.setWindowTitle("Firefighter UAV - Processed Page")
         self.setWindowIcon(QtGui.QIcon("assets/icons/LOGO.png"))
         self.filepath = filepath
-        self.initUI(pixmap)
+        self.initUI()
         self.apply_stylesheet("assets/stylesheets/base.qss")
 
-    def initUI(self, pixmap):
+    def initUI(self):
         layout = QHBoxLayout()
         layout.setAlignment(Qt.AlignLeft)
 
@@ -84,10 +84,12 @@ class MinimapWindow(QWidget):
 
         # Right Layout for Floor Plan
         remaining_height = int(self.height()*2)
-        aspect_ratio = pixmap.width() / pixmap.height()
+        #aspect_ratio = pixmap.width() / pixmap.height()
         adjusted_width = int(self.width()*3)
 
-        self.floor_plan_view = FloorPlan(self.filepath, width=adjusted_width, height=remaining_height, blur_effect=35)
+       
+        self.floor_plan_view = FloorPlan(self.filepath,width=adjusted_width, height=remaining_height, blur_effect=35)
+       
         # self.floor_plan_view.setFixedSize(adjusted_width, remaining_height)
 
         right_layout = QVBoxLayout()

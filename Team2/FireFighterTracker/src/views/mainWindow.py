@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import QComboBox
 from widgets.titleWidget import TitleWidget
 from views.uploadWindow import UploadWindow
 from views.noWindow import NoWindow
+from views.minimapWindow import MinimapWindow
 import globalVariables
 
 TILE_SIZE = 1  # Size of each tile
@@ -29,7 +30,6 @@ class MainWindow(QMainWindow):
 
         self.uploadPage = UploadWindow(self.stack)  # Pass the stack reference
         self.noPage = NoWindow("No Page - Manual Setup", self.stack)  # Pass the stack reference
-
         self.stack.addWidget(self.mainPage)
         self.stack.addWidget(self.uploadPage)
         self.stack.addWidget(self.noPage)
@@ -114,7 +114,9 @@ class MainWindow(QMainWindow):
             msg.exec_()
             return
         
-        self.stack.setCurrentWidget(self.noPage)
+        self.MinimapWindow = MinimapWindow(self.stack)  # Pass the stack reference
+        self.stack.addWidget(self.MinimapWindow)
+        self.stack.setCurrentWidget(self.MinimapWindow)
     
     def update_selected_com_port(self):
         selected_index = self.com_port_dropdown.currentIndex()
