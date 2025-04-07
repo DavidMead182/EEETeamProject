@@ -68,7 +68,7 @@ class UploadWindow(QWidget):
             return
 
         # Process the image (example: pass it to the MinimapWindow)
-        self.minimap_page = MinimapWindow(self.upload_Image.pixmap(), self.filePath, self.stack)
+        self.minimap_page = MinimapWindow(self.stack, self.filePath)
         # Optionally, switch to the minimap page in the stack
         self.stack.addWidget(self.minimap_page)
         self.stack.setCurrentWidget(self.minimap_page)

@@ -1,2 +1,2 @@
 COM_PORT = None
-IDENTIFIER = "Standard Serial"
+IDENTIFIER = "USB Serial Device"

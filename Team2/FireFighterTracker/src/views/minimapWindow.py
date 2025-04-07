@@ -7,7 +7,7 @@ from widgets.titleWidget import TitleWidget
 import PyQt5.QtGui as QtGui
 
 class MinimapWindow(QWidget):
-    def __init__(self, pixmap, filepath, stack):
+    def __init__(self,stack,filepath="assets/images/default.jpg"):
         super().__init__()
         self.stack = stack
         self.setWindowTitle("Firefighter UAV - Processed Page")
@@ -19,11 +19,10 @@ class MinimapWindow(QWidget):
         self.tile_size = 1
         self.trail_size = 5
         self.blur_effect = 35
-        
-        self.initUI(pixmap)
+        self.initUI()
         self.apply_stylesheet("assets/stylesheets/base.qss")
 
-    def initUI(self, pixmap):
+    def initUI(self):
         layout = QHBoxLayout()
         layout.setAlignment(Qt.AlignLeft)
 

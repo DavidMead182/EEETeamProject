@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import QComboBox
 from widgets.titleWidget import TitleWidget
 from views.uploadWindow import UploadWindow
 from views.noWindow import NoWindow
+from views.minimapWindow import MinimapWindow
 from views.consoleWindow import Console
 import globalVariables
 
@@ -123,8 +124,10 @@ class MainWindow(QMainWindow):
             msg.setText("No COM port selected. Please select a COM port first.")
             msg.exec_()
             return
-        
-        self.stack.setCurrentWidget(self.noPage)
+        self.MinimapWindow = MinimapWindow(self.stack)  # Pass the stack reference
+        self.stack.addWidget(self.MinimapWindow)
+        self.stack.setCurrentWidget(self.MinimapWindow)
+
 
     def on_console_button_clicked(self):
         if not globalVariables.COM_PORT:
@@ -134,7 +137,7 @@ class MainWindow(QMainWindow):
             msg.setText("No COM port selected. Please select a COM port first.")
             msg.exec_()
             return
-        
+         
         self.stack.setCurrentWidget(self.consolePage)
     
     def update_selected_com_port(self):
