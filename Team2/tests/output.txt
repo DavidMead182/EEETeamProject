@@ -1,14 +1,3 @@
-#include "mbed.h"
-#include <cstdio>
-
-// Serial connection (TX, RX) - connected to ST-Link Virtual COM Port
-BufferedSerial pc(USBTX, USBRX, 115200);
-
-// Onboard LED
-DigitalOut led(LED1);
-
-// Sample JSON data to send
-const char* json_data[] = {
 "{\"sequence\": 0, \"packets_lost\": 0, \"pitch\": -0.5293449844677379, \"roll\": -0.10706987674504166, \"yaw\": 89.60981613497488, \"distance\": 780.1305529253012, \"accel_x\": 0.17211905357168855, \"accel_y\": -0.13342596662785425, \"accel_z\": 9.797017444758243, \"timestamp\": 1744026643214}",
 "{\"sequence\": 1, \"packets_lost\": 0, \"pitch\": -0.0321705500723332, \"roll\": -0.011776318708654587, \"yaw\": 91.79450946998195, \"distance\": 798.4268466825672, \"accel_x\": 0.2160161757902873, \"accel_y\": 0.08728539538632829, \"accel_z\": 9.661864634110138, \"timestamp\": 1744026643792}",
 "{\"sequence\": 2, \"packets_lost\": 0, \"pitch\": -0.9036920933994756, \"roll\": 0.6498854799767092, \"yaw\": 97.23993163108196, \"distance\": 816.3930459889469, \"accel_x\": -0.14083064493031605, \"accel_y\": 0.007434304758765085, \"accel_z\": 9.875703274857381, \"timestamp\": 1744026643892}",
@@ -129,53 +118,3 @@ const char* json_data[] = {
 "{\"sequence\": 117, \"packets_lost\": 0, \"pitch\": -0.5709999163057403, \"roll\": -0.9544019083444036, \"yaw\": 81.3582160725762, \"distance\": 754.5793719064321, \"accel_x\": -0.2720542551217319, \"accel_y\": -0.006708659565679985, \"accel_z\": 9.708123341021233, \"timestamp\": 1744026655393}",
 "{\"sequence\": 118, \"packets_lost\": 0, \"pitch\": -0.682917977732385, \"roll\": -1.8468872505284013, \"yaw\": 84.14292670755712, \"distance\": 759.754919185803, \"accel_x\": 0.06660369275291439, \"accel_y\": -0.07295536324984465, \"accel_z\": 10.142199300145668, \"timestamp\": 1744026655493}",
 "{\"sequence\": 119, \"packets_lost\": 0, \"pitch\": -0.8314016468269164, \"roll\": -0.762626630132025, \"yaw\": 89.06593246513438, \"distance\": 769.290475454375, \"accel_x\": 0.11079008479707989, \"accel_y\": -0.18200090497658195, \"accel_z\": 10.18761761405436, \"timestamp\": 1744026655593}"
-};
-
-size_t get_string_size(const char* str) {
-    size_t size = 0;
-    while (str[size] != '\0') {  // Keep counting until the null terminator is reached
-        size++;
-    }
-    return size;
-}
-
-const int json_data_count = sizeof(json_data) / sizeof(json_data[0]);
-
-void send_json_data(const char* json_str, size_t len) {
-    // Send over serial
-    pc.write(json_str, len);
-    
-    // Add newline
-    const char* newline = "\r\n";
-    pc.write(newline, 2);
-    
-    // Brief LED blink on successful transmission
-    led = 1;
-    wait_us(100000); // 100ms
-    led = 0;
-}
-
-int main() {
-    // Blink LED once at startup
-    led = 1;
-    ThisThread::sleep_for(100ms);
-    led = 0;
-    
-    int counter = 0;
-    
-    while (true) {
-        // Send the current JSON data with its corresponding length
-        size_t length = get_string_size(json_data[counter % json_data_count]);
-        send_json_data(json_data[counter % json_data_count],length);
-        
-        // Increment counter
-        counter++;
-        
-        // Toggle LED every 10 iterations
-        if(counter % 10 == 0) {
-            led = !led; // Toggle LED for status change
-        }
-        
-        ThisThread::sleep_for(1000ms); // 1 second delay
-    }
-}
