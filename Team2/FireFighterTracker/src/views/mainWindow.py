@@ -123,10 +123,22 @@ class MainWindow(QMainWindow):
             msg.setIcon(QMessageBox.Information)
             msg.setText("No COM port selected. Please select a COM port first.")
             msg.exec_()
+            return
         self.MinimapWindow = MinimapWindow(self.stack)  # Pass the stack reference
         self.stack.addWidget(self.MinimapWindow)
         self.stack.setCurrentWidget(self.MinimapWindow)
-        return
+
+
+    def on_console_button_clicked(self):
+        if not globalVariables.COM_PORT:
+            print("No COM port selected")
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Information)
+            msg.setText("No COM port selected. Please select a COM port first.")
+            msg.exec_()
+            return
+         
+        self.stack.setCurrentWidget(self.consolePage)
     
     def update_selected_com_port(self):
         selected_index = self.com_port_dropdown.currentIndex()

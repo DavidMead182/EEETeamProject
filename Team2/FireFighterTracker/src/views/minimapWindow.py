@@ -19,7 +19,7 @@ class MinimapWindow(QWidget):
         self.tile_size = 1
         self.trail_size = 5
         self.blur_effect = 35
-        
+        self.initUI()
         self.apply_stylesheet("assets/stylesheets/base.qss")
 
     def initUI(self):
