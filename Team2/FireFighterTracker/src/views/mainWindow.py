@@ -5,6 +5,7 @@ import PyQt5.QtGui as QtGui
 import serial.tools.list_ports
 from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtWidgets import QComboBox
+from views.newMapping import NewMapping
 from widgets.titleWidget import TitleWidget
 from views.uploadWindow import UploadWindow
 from views.noWindow import NoWindow
@@ -124,7 +125,7 @@ class MainWindow(QMainWindow):
             msg.setText("No COM port selected. Please select a COM port first.")
             msg.exec_()
             return
-        self.MinimapWindow = MinimapWindow(self.stack)  # Pass the stack reference
+        self.MinimapWindow = NewMapping(self.stack)  # Pass the stack reference
         self.stack.addWidget(self.MinimapWindow)
         self.stack.setCurrentWidget(self.MinimapWindow)
 

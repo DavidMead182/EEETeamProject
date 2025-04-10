@@ -57,7 +57,7 @@ class MinimapWindow(QWidget):
         btn_back = QPushButton("Back")
         btn_back.setObjectName("btnYes")
         btn_back.setFont(QFont("Arial", 12))
-        btn_back.clicked.connect(self.open_upload_page)
+        btn_back.clicked.connect(self.open_main_page)
 
         left_layout.addWidget(horizontal_line, alignment=Qt.AlignCenter)
         left_layout.addSpacerItem(QSpacerItem(20, 20, QSizePolicy.Minimum, QSizePolicy.Fixed))
@@ -183,7 +183,7 @@ class MinimapWindow(QWidget):
         right_layout.addWidget(self.floor_plan_view, alignment=Qt.AlignCenter)
         self.layout().insertLayout(1, right_layout)
 
-    def open_upload_page(self):
+    def open_main_page(self):
         """Return to upload page"""
         self.stack.removeWidget(self)
         self.stack.setCurrentIndex(0)

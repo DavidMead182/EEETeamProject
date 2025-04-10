@@ -58,15 +58,11 @@ class MinimapApp(QMainWindow):
         self.current_yaw = 0
         self.packet_count = 0
         self.lost_packets = 0
-        
-    
+        self.person_graphics = []
+        self.prev_point = None
+
         # Connection
         self.connection = None
-        
-        # Timer for display updates
-        self.display_timer = QTimer()
-        self.display_timer.timeout.connect(self.update_display)
-        self.display_timer.start(50)  # Update every 50ms
         
     def set_connection(self, connection):
         """Set the data connection to use"""
@@ -119,27 +115,37 @@ class MinimapApp(QMainWindow):
             # Keep trail length reasonable
             if len(self.person_trail) > 50:
                 self.person_trail.pop(0)
+            
+            self.update_display()
                 
         except Exception as e:
             print(f"Error processing data: {e}")
     
     def update_display(self):
         """Update the minimap display"""
-        self.scene.clear()
         
         # Draw radar walls (blue)
         wall_pen = QPen(QColor(0, 0, 255), 2)
         wall_brush = QBrush(QColor(0, 0, 255, 100))  # More opaque blue
         
-        for yaw, distance in self.radar_data:
-            # Convert polar to cartesian coordinates (relative to person)
-            rad = -math.radians(yaw)
-            scaled_distance = distance / 2  # Scale down for better visibility
-            x = self.current_position.x() + scaled_distance * math.cos(rad)
-            y = self.current_position.y() + scaled_distance * math.sin(rad)
-            
-            # Draw wall point (larger size: 10x10 pixels)
-            self.scene.addEllipse(x-5, y-5, 10, 10, wall_pen, wall_brush)
+        yaw = self.radar_data[-1][0]
+        distance = self.radar_data[-1][1]
+        # Convert polar to cartesian coordinates (relative to person)
+        rad = -math.radians(yaw)
+        scaled_distance = distance / 2  # Scale down for better visibility
+        x = self.current_position.x() + scaled_distance * math.cos(rad)
+        y = self.current_position.y() + scaled_distance * math.sin(rad)
+        
+        if self.prev_point is not None:
+                # Draw a line from previous point to current point
+                self.scene.addLine(
+                    self.prev_point.x(), self.prev_point.y(),
+                    x, y,
+                    wall_pen
+                )
+        self.prev_point = QPointF(x, y)    
+        # Draw wall point (larger size: 10x10 pixels)
+        self.scene.addEllipse(x-5, y-5, 10, 10, wall_pen, wall_brush)
         
         # Draw person trail (green)
         if len(self.person_trail) > 1:
@@ -151,13 +157,21 @@ class MinimapApp(QMainWindow):
         self.draw_person()
         
     def draw_person(self):
-        """Draw the person with direction arrow"""
+        """Draw the person with direction arrow, removing previous graphics"""
+        # Remove previous person graphics if they exist
+        if hasattr(self, 'person_graphics'):
+            for item in self.person_graphics:
+                self.scene.removeItem(item)
+        
+        # Store new graphics items
+        self.person_graphics = []
+        
         person_pen = QPen(Qt.red, 2)
         person_brush = QBrush(Qt.red)
         
         # Person circle
         person_radius = 3
-        self.scene.addEllipse(
+        circle = self.scene.addEllipse(
             self.current_position.x() - person_radius, 
             self.current_position.y() - person_radius, 
             person_radius * 2, 
@@ -165,6 +179,7 @@ class MinimapApp(QMainWindow):
             person_pen, 
             person_brush
         )
+        self.person_graphics.append(circle)
         
         # Direction arrow
         arrow_length = 20
@@ -175,18 +190,19 @@ class MinimapApp(QMainWindow):
         )
         
         arrow_pen = QPen(Qt.red, 2)
-        self.scene.addLine(
+        line = self.scene.addLine(
             self.current_position.x(), 
             self.current_position.y(), 
             arrow_end.x(), 
             arrow_end.y(), 
             arrow_pen
         )
+        self.person_graphics.append(line)
         
-        # Add arrowhead
+        # Arrowhead
         arrow_head_size = 8
         angle = math.atan2(arrow_end.y() - self.current_position.y(), 
-                          arrow_end.x() - self.current_position.x())
+                        arrow_end.x() - self.current_position.x())
         
         p1 = QPointF(
             arrow_end.x() - arrow_head_size * math.cos(angle - math.pi/6),
@@ -198,7 +214,8 @@ class MinimapApp(QMainWindow):
         )
         
         arrow_head = QPolygonF([arrow_end, p1, p2])
-        self.scene.addPolygon(arrow_head, arrow_pen, QBrush(Qt.white))
+        head = self.scene.addPolygon(arrow_head, arrow_pen, QBrush(Qt.white))
+        self.person_graphics.append(head)
 
 class SerialConnection(DataConnection):
     """Serial connection implementation"""
