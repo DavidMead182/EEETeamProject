@@ -20,7 +20,7 @@ We will use a cable to connect from PC COM port to Team 4 Transceiver, which we 
 
 ### Screenshots of App
 #### Landing page
-![image](https://github.com/user-attachments/assets/966f8bf3-bbc2-4fae-b93b-d344832e8faa)
+![image](https://github.com/user-attachments/assets/d3537a7b-523e-427e-9505-08ffdb3ebf3f)
 #### Upload Image page
 ![image](https://github.com/user-attachments/assets/61c7a7df-c89f-4b2a-be7f-2904ac7d8f20)
 #### Current Wireframe for minimap page - this will change
