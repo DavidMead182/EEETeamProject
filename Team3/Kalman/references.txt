@@ -11,3 +11,7 @@ https://sparxeng.com/blog/software/imu-signal-processing-with-kalman-filter
 
 Extended Kalman filter using quaternions:
 https://ahrs.readthedocs.io/en/latest/filters/ekf.html
+
+
+
+https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/07-Kalman-Filter-Math.ipynb
