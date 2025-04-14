@@ -15,3 +15,5 @@ https://ahrs.readthedocs.io/en/latest/filters/ekf.html
 
 
 https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/07-Kalman-Filter-Math.ipynb
+
+https://openimu.readthedocs.io/en/latest/algorithms/STM_Quaternion.html
