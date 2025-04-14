@@ -18,3 +18,4 @@ https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/07-K
 
 https://openimu.readthedocs.io/en/latest/algorithms/STM_Quaternion.html
 https://www.mouser.co.uk/datasheet/2/940/6020_3885_01_G_OpenIMU300ZI_Datasheet-2939155.pdf
+https://www.mouser.co.uk/ProductDetail/ACEINNA/OpenIMU300ZI?qs=wnTfsH77Xs4swZX47E%2FWeA%3D%3D
