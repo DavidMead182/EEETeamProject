@@ -1,28 +1,24 @@
 #include <SPI.h>
-#include <RH_RF95.h>
+#include <SX127x.h>
 
-#define RFM95_CS 10
-#define RFM95_RST 9
-#define RFM95_INT 2
+// Pin definitions
+#define NSS_PIN 10
+#define RESET_PIN 9
+#define DIO0_PIN 2
+#define TXEN_PIN -1  
+#define RXEN_PIN -1  
 
-#define RF95_FREQ 868.0
-
-// Singleton instance of the radio driver
-RH_RF95 rf95(RFM95_CS, RFM95_INT);
+// Frequency setting
+#define RF_FREQUENCY 868000000  // 868.0 MHz in Hz
 
 // Constants for the simulation
 #define UPDATE_INTERVAL 100  // ms between sensor readings (10Hz)
 #define MAX_SEQUENCE 0xFFF   // 12-bit sequence number (0 to 4095)
 
-// #define SPI_BUS SPI1  // Uncomment if using SPI1
-// #define SPI_BUS SPI2  // Uncomment if using SPI2
+SX127x LoRa;
 
-
-
-// Global sequence number for tracking packets
 uint16_t sequenceNumber = 0;
 
-// Structure to hold our sensor data
 struct SensorData {
   float pitch;
   float roll;
@@ -35,52 +31,38 @@ struct SensorData {
 };
 
 void setup() {
-  pinMode(RFM95_RST, OUTPUT);
-  digitalWrite(RFM95_RST, HIGH);
-
   while (!Serial);
   Serial.begin(9600);
   delay(100);
 
-  // manual reset
-  digitalWrite(RFM95_RST, LOW);
-  delay(10);
-  digitalWrite(RFM95_RST, HIGH);
-  delay(10);
+  Serial.println("Arduino LoRa Transmitter");
 
-  while (!rf95.init()) {
+  // Configure pins
+  LoRa.setPins(NSS_PIN, RESET_PIN, DIO0_PIN, TXEN_PIN, RXEN_PIN);
+  
+  // Initialize LoRa module
+  if (!LoRa.begin()) {
     Serial.println("LoRa radio init failed");
     while (1);
   }
   Serial.println("LoRa radio init OK!");
 
   // Set frequency
-  if (!rf95.setFrequency(RF95_FREQ)) {
-    Serial.println("setFrequency failed");
-    while (1);
-  }
-  Serial.print("Set Freq to: "); Serial.println(RF95_FREQ);
+  LoRa.setFrequency(RF_FREQUENCY);
+  Serial.print("Set Freq to: "); Serial.println(RF_FREQUENCY / 1000000.0);
   
-  // trying to force LoRa mode:
-  rf95.spiWrite(0x01, 0x81);
-
-  // Manually configure modem settings for 250 kHz bandwidth
-  RH_RF95::ModemConfig config = {
-    0x92, // RegModemConfig1: Bw = 250 kHz, Cr = 4/5
-    0x74, // RegModemConfig2: SF = 7, TxContinuousMode = 0
-    0x04  // RegModemConfig3: LowDataRateOptimize off, AgcAutoOn on
-  };
-
-  rf95.setModemRegisters(&config);
-  rf95.setSpreadingFactor(10);
-  // Set transmitter power
-  rf95.setTxPower(23, false);
+  // Bandwidth 250 kHz, Spreading Factor 10, Coding Rate 4/5
+  LoRa.setLoRaModulation(10, 250000, 5, false);
   
-  // Initialize random seed for simulation (lets us have a little bit of consistency)
+  // Explicit header mode, preamble length 8, payload length variable, CRC on, no invert IQ
+  LoRa.setLoRaPacket(LORA_HEADER_EXPLICIT, 8, 0, true, false);
+  
+  LoRa.setTxPower(20, SX127X_TX_POWER_PA_BOOST);
+  
+  // Initialize random seed for simulation
   randomSeed(analogRead(0));
 }
 
-// Simulates IMU data randomly
 void getIMUData(SensorData *data) {
   static float basePitch = 0.0;
   static float baseRoll = 0.0;
@@ -93,7 +75,6 @@ void getIMUData(SensorData *data) {
   baseRoll += random(-5, 6) / 10.0;
   baseYaw += random(-10, 11) / 10.0;
   
-  // Simulate acceleration with some random drift
   baseAccelX = 0.7 * baseAccelX + random(-20, 21) / 100.0;
   baseAccelY = 0.7 * baseAccelY + random(-20, 21) / 100.0;
   baseAccelZ = 0.95 * baseAccelZ + 0.05 * 9.8 + random(-10, 11) / 100.0;
@@ -162,26 +143,29 @@ void sendData(SensorData data) {
   
   int packetLength = strlen(dataPacket);
   
-  // Serial.print("Sending data: "); 
-  // Serial.println(dataPacket);
-  
-  // Send the packet
-  rf95.send((uint8_t *)dataPacket, packetLength);
-  rf95.waitPacketSent();
+  // Begin packet transmission
+  LoRa.beginPacket();
+  LoRa.write((uint8_t *)dataPacket, packetLength);
+  LoRa.endPacket();
+  LoRa.wait();  // Wait for transmission to complete
   
   // Wait for a reply (acknowledgment)
-  uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
-  uint8_t len = sizeof(buf);
+  // Request reception
+  LoRa.request();
+  LoRa.wait();
   
-  if (rf95.waitAvailableTimeout(500)) {
-    if (rf95.recv(buf, &len)) {
-      // Serial.print("Got reply: ");
-      // Serial.println((char*)buf);
-      Serial.print("RSSI: ");
-      Serial.println(rf95.lastRssi(), DEC);
-    } else {
-      Serial.println("Receive failed");
+  if (LoRa.available()) {
+    char ackBuffer[LoRa.available()];
+    int i = 0;
+    
+    while (LoRa.available()) {
+      ackBuffer[i++] = LoRa.read();
     }
+    ackBuffer[i] = '\0';  // Null terminate
+    
+    // Print RSSI
+    Serial.print("RSSI: ");
+    Serial.println(LoRa.packetRssi());
   } else {
     Serial.println("No reply from receiver");
   }
