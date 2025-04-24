@@ -1,5 +1,6 @@
 #include "ICM20948.h"
 #include <MadgwickAHRS.h>
+#define pi 3.141 
 
 Madgwick filter;
 unsigned long microsPerReading, microsPrevious;
@@ -7,8 +8,8 @@ float accelScale, gyroScale;
 
 ICM20948 IMU(Wire, 0x69); // an ICM20948 object with the ICM-20948 sensor on I2C bus 0 with address 0x69
 int status;
-const int InButton = 0;
-int In = 2;               //Initialising the location area. 0 = outside, 1 = inside, 2 = undefined.
+const int InButton = 7;   // Pin which is the input to set whether the device is indoors or outdoors.
+bool In = 0;              //Initialising the location area. 0 = outside, 1 = inside, 2 = undefined.
 float magDec = 4.0;       //The magnetic declination
 
 bool dataAvailable = false;
@@ -31,7 +32,19 @@ float AccZ;
 //Madgwick variable initiation
 float ax, ay, az;
 float gx, gy, gz;
-float roll, pitch, heading, yaw;
+float roll, pitch, heading, yaw_mag;
+
+//Variables to store the sine and cosine of angles
+float lsa, lso, lsn, lca, lco, lcn;
+float gax, gay, gaz;
+float x = 0;
+float y = 0;
+float z = 0;
+
+float Vx = 0;
+float Vy = 0;
+float Vz = 0;
+
 unsigned long microsNow;
 
 float biasRemoved[3] = {0, 0, 0};
@@ -55,7 +68,7 @@ void setup() {
     Serial.println(status);
     while(1) {}
    }
-  IMU.configAccel(ICM20948::ACCEL_RANGE_16G, ICM20948::ACCEL_DLPF_BANDWIDTH_50HZ);
+  IMU.configAccel(ICM20948::ACCEL_RANGE_4G, ICM20948::ACCEL_DLPF_BANDWIDTH_50HZ);
   IMU.configGyro(ICM20948::GYRO_RANGE_2000DPS, ICM20948::GYRO_DLPF_BANDWIDTH_51HZ);
   IMU.setGyroSrd(113); // Output data rate is 1125/(1 + srd) Hz
   IMU.setAccelSrd(113);
@@ -65,26 +78,31 @@ void setup() {
   filter.begin(25);
 
   // initialize variables to pace updates to correct rate
-  microsPerReading = 1000000 / 25;
+  microsPerReading = 100000 / 25;   //4 milliseconds
   microsPrevious = micros();
 }
 
 float convertRawAcceleration(int aRaw) {
   // since we are using 2G range
-  // -2g maps to a raw value of -32768
-  // +2g maps to a raw value of 32767
+  // -4g maps to a raw value of -32768
+  // +4g maps to a raw value of 32767
   
-  float a = (aRaw * 2.0) / 32768.0;
+  float a = (aRaw * 4.0) / 32768.0;
   return a;
 }
 
 float convertRawGyro(int gRaw) {
-  // since we are using 250 degrees/seconds range
-  // -250 maps to a raw value of -32768
-  // +250 maps to a raw value of 32767
+  // since we are using 200 degrees/seconds range
+  // -200 maps to a raw value of -32768
+  // +200 maps to a raw value of 32767
   
-  float g = (gRaw * 250.0) / 32768.0;
+  float g = (gRaw * 200.0) / 32768.0;
   return g;
+}
+
+float integrate(float x0, float dx, float dt){
+  float x = x0 + dx*dt;
+  return x;
 }
 
 float A_out[3][3] = {
@@ -108,7 +126,7 @@ float A[3][3];
 float b[3];
 
 float correctedMag[3][3];
-
+float dt = 0.004;
 
 void loop() {
   dataTime = micros();
@@ -128,7 +146,7 @@ void loop() {
       //      dependending on the state
       //==============================================================
       if (In != digitalRead(InButton)){
-        if (0 == InButton){
+        if (0 == digitalRead(InButton)){
           for (int i; i<3;i++){
             for (int j; j<3; i++){
               A[i][j] = A_out[i][j];
@@ -146,6 +164,13 @@ void loop() {
         }
       }
 
+      float A[3][3] = {
+      { 1.121767, 0.013784, 0.002288},
+      { 0.013784, 1.041197,  0.013531},
+      {0.002288, 0.013531,  1.088577 }};
+
+      float b[3] = {-3.601709, -12.836361, -30.010240};
+
       //Reading the data
       float MagVal [3] = {IMU.getMagX_uT(), IMU.getMagY_uT(), IMU.getMagZ_uT()};
       float AVal [3] = {IMU.getAccelX_mss(), IMU.getAccelY_mss(), IMU.getAccelZ_mss()};
@@ -159,18 +184,14 @@ void loop() {
       for (int i=0;i<=2;i++){
         biasRemoved[i] = MagVal[i] - b[i];
         for (int j=0;j<=2;j++){
-          correctedMag[j][i] = A[j][i] * biasRemoved[i];
+          correctedMag[i][j] = A[j][i] * biasRemoved[i];
         }
       }
-      MagX = 0;
-      MagY = 0;
-      MagZ = 0;
-      for (int i=0;i<=2;i++){
-        MagX = MagX + correctedMag[0][i];
-        MagY = MagY + correctedMag[1][i];
-        MagZ = MagZ + correctedMag[2][i];
 
-      }
+
+      MagX = correctedMag[0][0] + correctedMag[0][1] + correctedMag[0][2];
+      MagY = correctedMag[1][0] + correctedMag[1][1] + correctedMag[1][2];
+      MagZ = correctedMag[2][0] + correctedMag[2][1] + correctedMag[2][2];
 
       //==============================================================
       //     Calibrating accelerometer and gyroscope data 
@@ -183,6 +204,17 @@ void loop() {
       GyroX = GVal[0] - GBias[0];
       GyroY = GVal[1] - GBias[1];
       GyroZ = GVal[2] - GBias[2]; 
+
+      // Serial.print(AccX);Serial.print("  ");
+      // Serial.print(AccY);Serial.print("  ");
+      // Serial.print(AccZ);Serial.print("  ");
+      // Serial.print(GyroX);Serial.print("  ");
+      // Serial.print(GyroY);Serial.print("  ");
+      // Serial.print(GyroZ);Serial.print("  ");
+      // Serial.print(MagX);Serial.print("  ");
+      // Serial.print(MagY);Serial.print("  ");
+      // Serial.print(MagZ);Serial.print("  ");
+      // Serial.print("\n");Serial.print("  ");
 
       //==============================================================
       //     Sensor fusion 
@@ -203,21 +235,85 @@ void loop() {
       roll = filter.getRoll();
       pitch = filter.getPitch();
       heading = filter.getYaw();
-      yaw = atan(MagX/MagY) - magDec;
-      Serial.print("Yaw mag: ");
-      Serial.print(yaw);
-      Serial.print("   Orientation: ");
-      Serial.print(heading);
-      Serial.print("   ");
+      yaw_mag = atan2(MagY,MagX)*180/pi - magDec;
+      Serial.print("Ori: ");
       Serial.print(pitch);
       Serial.print("   ");
-      Serial.println(roll);
+      Serial.print(roll);
+      Serial.print("   ");
+      Serial.print(yaw_mag);
 
       //==============================================================
       //     Must add complimentary filter to find the most
       //     accurate yaw using gyro and magnetometer
       //     estimates. 
       //==============================================================  
+
+      //==============================================================
+      //     Converting local acceleration into global 
+      //==============================================================
+      lsn = sin(radians(roll));
+      lcn = cos(radians(roll));
+      lso = sin(radians(pitch));
+      lco = cos(radians(pitch));
+      lsa = sin(radians(yaw_mag));
+      lca = cos(radians(yaw_mag));
+
+      gax = lco*lca*AccX + (-lsa*lcn + lca*lso*lsn)*AccY + (lsa*lsn + lca*lcn*lso)*AccZ;
+      gay = (lsa*lco)*AccX + (lca*lcn + lsa*lso*lsn)*AccY + (-lsn*lca + lsa*lso*lcn)*AccZ;
+      gaz = -lso*AccX + lco*lsn*AccY + lco*lcn*AccZ;
+
+      //==============================================================
+      //     Displayig global acceleration 
+      //==============================================================
+      Serial.print(" |  Glob acc: ");
+      Serial.print(gax);
+      Serial.print("   ");
+      Serial.print(gay);
+      Serial.print("   ");
+      Serial.print(gaz);
+
+      //Removing the acceleration due
+      gaz -= 9.81;
+
+      //Integrating acceleration twice to find the displacement
+      Vx = integrate(Vx, gax, dt);
+      Vy = integrate(Vy, gay, dt);
+      Vz = integrate(Vz, gaz, dt);
+
+      x = integrate(x, Vx, dt);
+      y = integrate(y, Vz, dt);
+      z = integrate(z, Vy, dt);
+
+      //==============================================================
+      //     Displaying global acceleration with gravity removed
+      //==============================================================
+      Serial.print(" |  Glob acc: ");
+      Serial.print(gax);
+      Serial.print("   ");
+      Serial.print(gay);
+      Serial.print("   ");
+      Serial.print(gaz);
+
+      //==============================================================
+      //     Displaying global velocity
+      //==============================================================
+      Serial.print(" |  Glob vel: ");
+      Serial.print(Vx,2);
+      Serial.print("   ");
+      Serial.print(Vy,2);
+      Serial.print("   ");
+      Serial.print(Vz,2);
+
+      //==============================================================
+      //     Displaying global displacemet
+      //==============================================================
+      Serial.print(" |  Glob pos: ");
+      Serial.print(x,3);
+      Serial.print("   ");
+      Serial.print(y,3);
+      Serial.print("   ");
+      Serial.println(z,3);
   
       // increment previous time, so we keep proper pace
       microsPrevious = microsPrevious + microsPerReading;
