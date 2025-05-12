@@ -1,20 +1,103 @@
 #include <SPI.h>
-#include <SX127x.h>
+#include <RH_RF95.h>
 
-// Pin definitions
-#define NSS_PIN 10
-#define RESET_PIN 9
-#define DIO0_PIN 2
-#define TXEN_PIN -1  
-#define RXEN_PIN -1  
+#define RFM95_CS 10
+#define RFM95_RST 9
+#define RFM95_INT 2
 
-// Frequency setting
-#define RF_FREQUENCY 868000000  
+#define RF95_FREQ 868.0
 
-
-SX127x LoRa;
+// #define SPI_BUS SPI1  // Uncomment if using SPI1
+// #define SPI_BUS SPI2  // Uncomment if using SPI2
 
 
+// Singleton instance of the radio driver
+RH_RF95 rf95(RFM95_CS, RFM95_INT);
+
+void setup() {
+  pinMode(RFM95_RST, OUTPUT);
+  digitalWrite(RFM95_RST, HIGH);
+
+  while (!Serial);
+  Serial.begin(9600);
+  delay(100);
+
+  Serial.println("Arduino LoRa Receiver");
+
+  // manual reset
+  digitalWrite(RFM95_RST, LOW);
+  delay(10);
+  digitalWrite(RFM95_RST, HIGH);
+  delay(10);
+
+  while (!rf95.init()) {
+    Serial.println("LoRa radio init failed");
+    while (1);
+  }
+  Serial.println("LoRa radio init OK!");
+
+  // Set frequency
+  if (!rf95.setFrequency(RF95_FREQ)) {
+    Serial.println("setFrequency failed");
+    while (1);
+  }
+  Serial.print("Set Freq to: "); Serial.println(RF95_FREQ);
+
+  // trying to force LoRa mode:
+  rf95.spiWrite(0x01, 0x81);
+
+  // set bandwidth to 250 kHz instead of the default
+  // Manually set modem configuration for 250 kHz bandwidth
+  RH_RF95::ModemConfig config = {
+    0x92, // RegModemConfig1: Bw = 250 kHz, Cr = 4/5
+    0x74, // RegModemConfig2: SF = 7, TxContinuousMode = 0
+    0x04  // RegModemConfig3: LowDataRateOptimize off, AgcAutoOn on
+  };
+
+
+  rf95.setModemRegisters(&config);
+  rf95.setSpreadingFactor(10);
+  rf95.setTxPower(23, false);
+
+  rateUpdateTime = millis();
+}
+
+void loop() {
+  if (rf95.available()) {
+    // Should be a message for us now
+    uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
+    uint8_t len = sizeof(buf);
+
+    if (rf95.recv(buf, &len)) {
+      // Ensure the string is null-terminated
+      if (len < RH_RF95_MAX_MESSAGE_LEN) {
+        buf[len] = 0;
+      } else {
+        buf[RH_RF95_MAX_MESSAGE_LEN - 1] = 0;
+      }
+
+      // Print diagnostics
+      Serial.print("RSSI: ");
+      Serial.println(rf95.lastRssi(), DEC);
+
+      // Convert the received data to JSON format
+      char jsonBuffer[256];
+      convertToJson((char*)buf, jsonBuffer, sizeof(jsonBuffer));
+      
+      // Send the JSON data to Python via serial
+      Serial.println(jsonBuffer);
+      
+      // Send an acknowledgment back
+      const char* responseMsg = "ACK";
+      rf95.send((uint8_t*)responseMsg, strlen(responseMsg));
+      rf95.waitPacketSent();
+    } else {
+      Serial.println("Receive failed");
+    }
+  }
+}
+
+// Variables for tracking packets
 uint16_t lastSequence = 0;
 uint16_t packetsLost = 0;
 bool firstPacket = true;
@@ -22,70 +105,6 @@ unsigned long lastPacketTime = 0;  // Track time of last packet
 float packetRate = 0.0;           // Packets per second
 unsigned long rateUpdateTime = 0;  // Time of last rate calculation
 uint16_t packetCount = 0;         // Count packets for rate calculation
-
-void setup() {
-  while (!Serial);
-  Serial.begin(9600);
-  delay(100);
-
-  Serial.println("Arduino LoRa Receiver");
-
-  // Configure pins
-  LoRa.setPins(NSS_PIN, RESET_PIN, DIO0_PIN, TXEN_PIN, RXEN_PIN);
-  
-  // Initialize LoRa module
-  if (!LoRa.begin()) {
-    Serial.println("LoRa radio init failed");
-    while (1);
-  }
-  Serial.println("LoRa radio init OK!");
-
-  LoRa.setFrequency(RF_FREQUENCY);
-  Serial.print("Set Freq to: "); Serial.println(RF_FREQUENCY / 1000000.0);
-  
-  // Bandwidth 250 kHz, Spreading Factor 10, Coding Rate 4/5
-  LoRa.setLoRaModulation(10, 250000, 5, false);
-  
-  // Explicit header mode, preamble length 8, payload length variable, CRC on, no invert IQ
-  LoRa.setLoRaPacket(LORA_HEADER_EXPLICIT, 8, 0, true, false);
-  
-  LoRa.setTxPower(20, SX127X_TX_POWER_PA_BOOST);
-  
-  // Set receive gain to boosted
-  LoRa.setRxGain(LORA_RX_GAIN_BOOSTED);
-  
-  rateUpdateTime = millis();
-}
-
-void loop() {
-  LoRa.request();
-  LoRa.wait();
-  
-  if (LoRa.available()) {
-    char buf[256];
-    int i = 0;
-    
-    while (LoRa.available() && i < 255) {
-      buf[i++] = LoRa.read();
-    }
-    buf[i] = '\0';  // Null terminate
-    
-    Serial.print("RSSI: ");
-    Serial.println(LoRa.packetRssi());
-    
-    char jsonBuffer[256];
-    convertToJson(buf, jsonBuffer, sizeof(jsonBuffer));
-    
-    // Send the JSON data to Python via serial
-    Serial.println(jsonBuffer);
-    
-    const char* responseMsg = "ACK";
-    LoRa.beginPacket();
-    LoRa.write((uint8_t*)responseMsg, strlen(responseMsg));
-    LoRa.endPacket();
-    LoRa.wait();
-  }
-}
 
 // Convert the received string format data to JSON
 void convertToJson(char* input, char* jsonOutput, size_t maxSize) {
@@ -147,13 +166,16 @@ void convertToJson(char* input, char* jsonOutput, size_t maxSize) {
         firstPacket = false;
       }
       
+      // Update last sequence
       lastSequence = currentSequence;
       
-      // Add packet loss stats and rate to JSON using dtostrf for proper float formatting
-      char rateStr[10];
-      dtostrf(packetRate, 1, 2, rateStr);  // Convert float to string with 2 decimal places
-      sprintf(jsonOutput + strlen(jsonOutput), ",\"packets_lost\":%d,\"packet_rate\":%s", 
-              packetsLost, rateStr);
+      // Add packet loss stats to JSON
+      sprintf(jsonOutput + strlen(jsonOutput), ",\"packets_lost\":%d", packetsLost);
+      
+      // Add packet rate to JSON
+      char rateStr[15];
+      dtostrf(packetRate, 1, 2, rateStr);
+      sprintf(jsonOutput + strlen(jsonOutput), ",\"packet_rate\":%s", rateStr);
     }
     else if (token[0] == 'P' && token[1] == ':') {  // Pitch
       strcpy(key, "\"pitch\"");
@@ -213,6 +235,10 @@ void convertToJson(char* input, char* jsonOutput, size_t maxSize) {
     // Get next token
     token = strtok(NULL, ",");
   }
+  
+  // Add packet loss stats and rate to JSON
+  sprintf(jsonOutput + strlen(jsonOutput), ",\"packets_lost\":%d,\"packet_rate\":%.2f", 
+          packetsLost, packetRate);
   
   // Close the JSON object
   strcat(jsonOutput, "}");
