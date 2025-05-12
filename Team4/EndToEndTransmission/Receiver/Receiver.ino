@@ -178,6 +178,9 @@ void convertToJson(char* input, char* jsonOutput, size_t maxSize) {
       char rateStr[15];
       dtostrf(packetRate, 1, 2, rateStr);
       sprintf(jsonOutput + strlen(jsonOutput), ",\"packet_rate\":%s", rateStr);
+
+       // Add RSSI to JSON
+      sprintf(jsonOutput + strlen(jsonOutput), ",\"rssi\":%d", rf95.lastRssi());  
     }
     else if (token[0] == 'P' && token[1] == ':') {  // Pitch
       strcpy(key, "\"pitch\"");
@@ -237,13 +240,6 @@ void convertToJson(char* input, char* jsonOutput, size_t maxSize) {
     // Get next token
     token = strtok(NULL, ",");
   }
-  
-  // Add packet loss stats and rate to JSON
-  sprintf(jsonOutput + strlen(jsonOutput), ",\"packets_lost\":%d,\"packet_rate\":%.2f", 
-          packetsLost, packetRate);
-
-    // Add RSSI to JSON
-  sprintf(jsonOutput + strlen(jsonOutput), ",\"rssi\":%d", rf95.lastRssi());
   
   // Close the JSON object
   strcat(jsonOutput, "}");

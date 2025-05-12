@@ -43,7 +43,7 @@ class SensorDataProcessor:
         self.packets_lost = deque(maxlen=100)
         self.loss_percentage = deque(maxlen=100)
         self.rolling_loss_percentage = deque(maxlen=100)  # New for rolling average
-        self.rssi_vals = deque(maxlen=100)
+        self.rssi_values = deque(maxlen=100)
         
         # Window for calculating true rolling packet loss
         # This will track actual packet reception success/failure in the window
