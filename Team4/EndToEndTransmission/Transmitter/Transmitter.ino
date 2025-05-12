@@ -1,5 +1,7 @@
 #include <SPI.h>
 #include <RH_RF95.h>
+#include <Wire.h>                                  // Qwiic I2C bus
+#include "SparkFun_Qwiic_XM125_Arduino_Library.h"   // Radar library
 
 #define RFM95_CS 10
 #define RFM95_RST 9
@@ -7,17 +9,17 @@
 
 #define RF95_FREQ 868.0
 
-// Singleton instance of the radio driver
-RH_RF95 rf95(RFM95_CS, RFM95_INT);
+// Radar sensing range (in mm)
+#define RANGE_START_MM 100
+#define RANGE_END_MM   5000
 
 // Constants for the simulation
 #define UPDATE_INTERVAL 100  // ms between sensor readings (10Hz)
 #define MAX_SEQUENCE 0xFFF   // 12-bit sequence number (0 to 4095)
 
-// #define SPI_BUS SPI1  // Uncomment if using SPI1
-// #define SPI_BUS SPI2  // Uncomment if using SPI2
-
-
+// Singleton instances
+RH_RF95 rf95(RFM95_CS, RFM95_INT);
+SparkFunXM125Distance radar;                       // Radar sensor
 
 // Global sequence number for tracking packets
 uint16_t sequenceNumber = 0;
@@ -76,8 +78,16 @@ void setup() {
   // Set transmitter power
   rf95.setTxPower(23, false);
   
-  // Initialize random seed for simulation (lets us have a little bit of consistency)
+  // Initialize random seed for simulation
   randomSeed(analogRead(0));
+
+  // Initialize radar
+  Wire.begin();  // start I²C for Qwiic bus
+  if (radar.distanceSetup(RANGE_START_MM, RANGE_END_MM)) {
+    Serial.println("Radar setup failed!");
+    while (1); // halt if radar won't initialize
+  }
+  Serial.println("Radar initialized OK");
 }
 
 // Simulates IMU data randomly
@@ -123,14 +133,43 @@ void getIMUData(SensorData *data) {
   data->accelZ = baseAccelZ;
 }
 
-// Simulates radar distance reading
+// Get real radar reading
 void getRadarData(SensorData *data) {
-  // Simulate distance based on facing direction (yaw)
-  // For this I'll make the distance vary based on yaw
-  float baseDistance = 100.0 + 50.0 * sin(data->yaw * PI / 180.0);
-  float randomVariation = random(-10, 11);
-  
-  data->radarDistance = baseDistance + randomVariation;
+  // Arm for a single distance read
+  radar.detectorReadingSetup();
+
+  // How many peaks do we see?
+  uint32_t nPeaks = 0;
+  radar.getNumberDistances(nPeaks);
+  if (nPeaks == 0) {
+    data->radarDistance = 0; // no returns
+    return;
+  }
+
+  // Find the peak with the highest raw strength
+  bool found = false;
+  int32_t bestStrength = 0;
+  uint32_t bestDistance = 0;
+
+  for (uint32_t i = 0; i < nPeaks; ++i) {
+    uint32_t d = 0;
+    int32_t  s = 0;
+    if (radar.getPeakDistance(i, d) != ksfTkErrOk ||
+        radar.getPeakStrength(i, s) != ksfTkErrOk) {
+      continue;
+    }
+    if (!found || s > bestStrength) {
+      found = true;
+      bestStrength = s;
+      bestDistance = d;
+    }
+  }
+
+  // NOTE: bestDistance is returned in raw millimetres as reported by the sensor.
+  // The code given scaled from 0-1, more like
+  //   float scaled = float(bestDistance - RANGE_START_MM)
+  //                / float(RANGE_END_MM   - RANGE_START_MM);
+  data->radarDistance = bestDistance;
 }
 
 void sendData(SensorData data) {
@@ -162,9 +201,6 @@ void sendData(SensorData data) {
   
   int packetLength = strlen(dataPacket);
   
-  // Serial.print("Sending data: "); 
-  // Serial.println(dataPacket);
-  
   // Send the packet
   rf95.send((uint8_t *)dataPacket, packetLength);
   rf95.waitPacketSent();
@@ -175,8 +211,6 @@ void sendData(SensorData data) {
   
   if (rf95.waitAvailableTimeout(500)) {
     if (rf95.recv(buf, &len)) {
-      // Serial.print("Got reply: ");
-      // Serial.println((char*)buf);
       Serial.print("RSSI: ");
       Serial.println(rf95.lastRssi(), DEC);
     } else {
@@ -193,8 +227,10 @@ void loop() {
   // Get the current time
   currentData.timestamp = millis();
   
-  // Get simulated sensor readings
+  // Get simulated IMU readings
   getIMUData(&currentData);
+  
+  // Get real radar reading
   getRadarData(&currentData);
   
   // Send the data
