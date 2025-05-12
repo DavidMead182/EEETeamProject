@@ -14,6 +14,15 @@
 // Singleton instance of the radio driver
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
 
+// Variables for tracking packets
+uint16_t lastSequence = 0;
+uint16_t packetsLost = 0;
+bool firstPacket = true;
+unsigned long lastPacketTime = 0;  // Track time of last packet
+float packetRate = 0.0;           // Packets per second
+unsigned long rateUpdateTime = 0;  // Time of last rate calculation
+uint16_t packetCount = 0;         // Count packets for rate calculation 
+
 void setup() {
   pinMode(RFM95_RST, OUTPUT);
   digitalWrite(RFM95_RST, HIGH);
@@ -97,14 +106,7 @@ void loop() {
   }
 }
 
-// Variables for tracking packets
-uint16_t lastSequence = 0;
-uint16_t packetsLost = 0;
-bool firstPacket = true;
-unsigned long lastPacketTime = 0;  // Track time of last packet
-float packetRate = 0.0;           // Packets per second
-unsigned long rateUpdateTime = 0;  // Time of last rate calculation
-uint16_t packetCount = 0;         // Count packets for rate calculation
+
 
 // Convert the received string format data to JSON
 void convertToJson(char* input, char* jsonOutput, size_t maxSize) {
@@ -239,6 +241,9 @@ void convertToJson(char* input, char* jsonOutput, size_t maxSize) {
   // Add packet loss stats and rate to JSON
   sprintf(jsonOutput + strlen(jsonOutput), ",\"packets_lost\":%d,\"packet_rate\":%.2f", 
           packetsLost, packetRate);
+
+    // Add RSSI to JSON
+  sprintf(jsonOutput + strlen(jsonOutput), ",\"rssi\":%d", rf95.lastRssi());
   
   // Close the JSON object
   strcat(jsonOutput, "}");
