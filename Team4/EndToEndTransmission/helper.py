@@ -43,6 +43,7 @@ class SensorDataProcessor:
         self.packets_lost = deque(maxlen=100)
         self.loss_percentage = deque(maxlen=100)
         self.rolling_loss_percentage = deque(maxlen=100)  # New for rolling average
+        self.rssi_vals = deque(maxlen=100)
         
         # Window for calculating true rolling packet loss
         # This will track actual packet reception success/failure in the window
@@ -108,6 +109,9 @@ class SensorDataProcessor:
             current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
             timestamp = datetime.datetime.now()
             
+            rssi = data.get('rssi', 0)
+            self.rssi_values.append(rssi)
+
             # Calculate cardinal direction from yaw
             cardinal_direction = self._get_cardinal_direction(data.get('yaw', 0))
             
@@ -187,7 +191,8 @@ class SensorDataProcessor:
                 "radar": {
                     "distance_cm": data.get('distance', 0),
                     "direction": cardinal_direction
-                }
+                },
+                "rssi": rssi
             }
             
             # Update packet rate for plotting
@@ -208,6 +213,7 @@ class SensorDataProcessor:
                 f"Y={data.get('accel_y', 0):.2f}, "
                 f"Z={data.get('accel_z', 0):.2f} m/s²\n"
                 f"Radar: {data.get('distance', 0):.2f} cm @ {cardinal_direction}\n"
+                f"RSSI: {rssi} dBm\n"
                 f"-------------------------\n"
             )
             
@@ -255,7 +261,7 @@ class SensorDataProcessor:
             
             # Initialize the plot in the main thread
             plt.ion()  # Turn on interactive mode
-            self.fig, (self.ax1, self.ax2) = plt.subplots(2, 1, figsize=(10, 8))
+            self.fig, (self.ax1, self.ax2, self.ax3) = plt.subplots(2, 1, figsize=(10, 12))
             
             # Setup loss percentage plot
             self.ax1.set_title('Packet Loss Percentage')
@@ -271,13 +277,22 @@ class SensorDataProcessor:
             self.ax2.set_ylim(0, 12)  # Adjust based on expected rates
             self.ax2.grid(True)
             
+            # Setup RSSI plot
+            self.ax3.set_title('Signal Strength (RSSI)')
+            self.ax3.set_xlabel('Sample Number')
+            self.ax3.set_ylabel('RSSI (dBm)')
+            self.ax3.set_ylim(-130, -40)  # Typical LoRa RSSI range
+            self.ax3.grid(True)
+
             # Create lines for both plots
             self.instant_line, = self.ax1.plot([], [], 'r-', alpha=0.5, label='Overall Loss %')
             self.rolling_line, = self.ax1.plot([], [], 'b-', linewidth=2, label='Rolling Loss %')
             self.rate_line, = self.ax2.plot([], [], 'g-', linewidth=2, label='Packet Rate')
+            self.rssi_line, = self.ax3.plot([], [], 'm-', linewidth=2, label='RSSI')
             
             self.ax1.legend()
             self.ax2.legend()
+            self.ax3.legend()
             
             plt.tight_layout()
             
@@ -360,6 +375,22 @@ class SensorDataProcessor:
                     if max_rate > 0:
                         self.ax2.set_ylim(0, max(12, max_rate * 1.2))
                 
+                # Update RSSI plot
+                rssi_data = list(self.rssi_values)
+                if rssi_data:
+                    sample_nums = list(range(len(rssi_data)))
+                    self.rssi_line.set_data(sample_nums, rssi_data)
+                    self.ax3.set_xlim(0, max(10, len(sample_nums)))
+                    
+                    # RSSI values are typically negative, so find min/max appropriately
+                    min_rssi = min(rssi_data)
+                    max_rssi = max(rssi_data)
+                    
+                    # Set y-axis limits with some padding
+                    self.ax3.set_ylim(min(min_rssi - 5, -120), max(max_rssi + 5, -40))
+                
+
+
         except Exception as e:
             print(f"Error updating plot: {e}")
             self.plot_active = False
