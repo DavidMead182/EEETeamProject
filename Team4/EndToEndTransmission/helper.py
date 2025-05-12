@@ -8,13 +8,13 @@ import argparse
 import os
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-import matplotlib.dates as mdates
+import numpy as np
 from collections import deque
 import threading
-import numpy as np
 
 class SensorDataProcessor:
     def __init__(self, com_port, baud_rate=9600, rolling_window=40):
+        # Existing initialization code...
         self.com_port = com_port
         self.baud_rate = baud_rate
         self.serial_conn = None
@@ -44,9 +44,9 @@ class SensorDataProcessor:
         self.loss_percentage = deque(maxlen=100)
         self.rolling_loss_percentage = deque(maxlen=100)  # New for rolling average
         self.rssi_values = deque(maxlen=100)
+        self.packet_rates = deque(maxlen=100)
         
         # Window for calculating true rolling packet loss
-        # This will track actual packet reception success/failure in the window
         self.packet_window = deque(maxlen=rolling_window)  # 1 for received, 0 for lost
         
         # Cumulative counters (for overall statistics)
@@ -55,8 +55,12 @@ class SensorDataProcessor:
         self.prev_sequence = None  # Track previous sequence number to detect losses
         self.plot_active = False
         
-        # Add packet rate tracking
-        self.packet_rates = deque(maxlen=100)
+        # Animation object holder
+        self.ani = None
+        self.fig = None
+    
+    # [Keep all your existing methods: connect, close, calculate_rolling_loss_percentage, 
+    # process_data, _get_cardinal_direction, etc.]
     
     def connect(self):
         """Connect to the Arduino via serial port"""
@@ -162,6 +166,9 @@ class SensorDataProcessor:
                 self.packets_lost.append(self.total_packets_lost)
                 self.loss_percentage.append(loss_percent)
                 self.rolling_loss_percentage.append(rolling_loss)
+                
+                # Update packet rate for plotting
+                self.packet_rates.append(data.get('packet_rate', 0.0))
             
             # Create a processed data record
             processed_data = {
@@ -194,9 +201,6 @@ class SensorDataProcessor:
                 },
                 "rssi": rssi
             }
-            
-            # Update packet rate for plotting
-            self.packet_rates.append(data.get('packet_rate', 0.0))
             
             # Create a human-readable summary
             window_info = f"last {len(self.packet_window)}/{self.rolling_window} packets"
@@ -254,14 +258,21 @@ class SensorDataProcessor:
         # Default in case of an error
         return "Unknown"
     
+    # Replace the start_plotting and update_plot methods with these new ones:
     def start_plotting(self):
-        """Start the plotting in the main thread using a non-blocking approach"""
+        """Start the plotting with a non-blocking animation approach"""
         try:
+            # Set the backend explicitly to a non-interactive backend
+            import matplotlib
+            matplotlib.use('TkAgg')  # or try 'Qt5Agg' if available
+            
+            import matplotlib.pyplot as plt
+            from matplotlib.animation import FuncAnimation
+            
             self.plot_active = True
             
-            # Initialize the plot in the main thread
-            plt.ion()  # Turn on interactive mode
-            self.fig, (self.ax1, self.ax2, self.ax3) = plt.subplots(2, 1, figsize=(10, 12))
+            # Create the plot
+            self.fig, (self.ax1, self.ax2, self.ax3) = plt.subplots(3, 1, figsize=(10, 12))
             
             # Setup loss percentage plot
             self.ax1.set_title('Packet Loss Percentage')
@@ -284,7 +295,7 @@ class SensorDataProcessor:
             self.ax3.set_ylim(-130, -40)  # Typical LoRa RSSI range
             self.ax3.grid(True)
 
-            # Create lines for both plots
+            # Create lines for the plots with empty data initially
             self.instant_line, = self.ax1.plot([], [], 'r-', alpha=0.5, label='Overall Loss %')
             self.rolling_line, = self.ax1.plot([], [], 'b-', linewidth=2, label='Rolling Loss %')
             self.rate_line, = self.ax2.plot([], [], 'g-', linewidth=2, label='Packet Rate')
@@ -294,47 +305,53 @@ class SensorDataProcessor:
             self.ax2.legend()
             self.ax3.legend()
             
-            plt.tight_layout()
-            
-            # Add initial text annotation
+            # Add info text at the top of the first plot
             self.info_text = self.ax1.text(0.02, 0.95, 
-                                         f'Overall Loss: 0.00%\n'
-                                         f'Rolling Loss: 0.00% (window={self.rolling_window})\n'
-                                         f'Total Packets: 0\n'
-                                         f'Lost Packets: 0',
+                                         'Initializing...',
                                          transform=self.ax1.transAxes,
                                          fontsize=10, verticalalignment='top',
                                          bbox=dict(facecolor='white', alpha=0.5))
             
-            # Show the plot window
-            self.fig.canvas.draw()
-            plt.show(block=False)
+            plt.tight_layout()
             
-            print(f"Plot initialized in main thread (rolling window: {self.rolling_window} samples)")
+            # Create the animation updating at 100ms intervals (10 fps)
+            self.ani = FuncAnimation(
+                self.fig, 
+                self._animation_update, 
+                interval=100,  # Update every 100ms
+                blit=False,    # Redraw the entire canvas on each frame (more reliable but slower)
+                cache_frame_data=False  # Don't cache frame data (prevents memory leaks)
+            )
+            
+            # Run the plot in a non-blocking way
+            plt.show(block=False)
+            print(f"Plot initialized using FuncAnimation (rolling window: {self.rolling_window} samples)")
             
         except Exception as e:
             print(f"Failed to start plotting: {e}")
             self.plot_active = False
     
-    def update_plot(self):
-        """Update the plot with current data"""
-        if not self.plot_active:
-            return
-            
+    def _animation_update(self, frame):
+        """Animation update function - called by FuncAnimation"""
         try:
             with self.plot_lock:
                 loss_pcts = list(self.loss_percentage)
                 rolling_loss_pcts = list(self.rolling_loss_percentage)
+                rate_data = list(self.packet_rates)
+                rssi_data = list(self.rssi_values)
+                
+                if not self.plot_active:
+                    return
                 
                 if loss_pcts:
                     # Use sample numbers for x-axis
                     sample_nums = list(range(len(loss_pcts)))
                     
-                    # Update the line data
+                    # Update the line data for plot 1
                     self.instant_line.set_data(sample_nums, loss_pcts)
                     self.rolling_line.set_data(sample_nums, rolling_loss_pcts)
                     
-                    # Update axis limits
+                    # Update axis limits for plot 1
                     self.ax1.set_xlim(0, max(10, len(sample_nums)))
                     
                     # Update y-axis if needed - use the max of both datasets
@@ -348,6 +365,7 @@ class SensorDataProcessor:
                     latest_loss = loss_pcts[-1] if loss_pcts else 0
                     latest_rolling = rolling_loss_pcts[-1] if rolling_loss_pcts else 0
                     
+                    # Update the info text by removing and recreating it
                     if hasattr(self, 'info_text') and self.info_text:
                         self.info_text.remove()
                     
@@ -360,40 +378,35 @@ class SensorDataProcessor:
                                                  transform=self.ax1.transAxes,
                                                  fontsize=10, verticalalignment='top',
                                                  bbox=dict(facecolor='white', alpha=0.5))
-                    
-                    # Redraw the plot
-                    self.fig.canvas.draw_idle()
-                    self.fig.canvas.flush_events()
                 
                 # Update packet rate plot
-                rate_data = list(self.packet_rates)
                 if rate_data:
                     sample_nums = list(range(len(rate_data)))
                     self.rate_line.set_data(sample_nums, rate_data)
                     self.ax2.set_xlim(0, max(10, len(sample_nums)))
-                    max_rate = max(rate_data)
+                    max_rate = max(rate_data) if rate_data else 0
                     if max_rate > 0:
                         self.ax2.set_ylim(0, max(12, max_rate * 1.2))
                 
                 # Update RSSI plot
-                rssi_data = list(self.rssi_values)
                 if rssi_data:
                     sample_nums = list(range(len(rssi_data)))
                     self.rssi_line.set_data(sample_nums, rssi_data)
                     self.ax3.set_xlim(0, max(10, len(sample_nums)))
                     
                     # RSSI values are typically negative, so find min/max appropriately
-                    min_rssi = min(rssi_data)
-                    max_rssi = max(rssi_data)
+                    min_rssi = min(rssi_data) if rssi_data else -120
+                    max_rssi = max(rssi_data) if rssi_data else -40
                     
                     # Set y-axis limits with some padding
                     self.ax3.set_ylim(min(min_rssi - 5, -120), max(max_rssi + 5, -40))
                 
-
-
+                # Return artists that were modified (not required with blit=False)
+                return self.instant_line, self.rolling_line, self.rate_line, self.rssi_line, self.info_text
+                
         except Exception as e:
-            print(f"Error updating plot: {e}")
-            self.plot_active = False
+            print(f"Error in animation update: {e}")
+            return []
     
     def run(self, enable_plotting=True):
         """Main loop to receive and process data"""
@@ -408,9 +421,6 @@ class SensorDataProcessor:
             self.start_plotting()
         
         try:
-            last_plot_update = time.time()
-            plot_update_interval = 0.1  # Update plot at 10Hz (every 0.1 seconds)
-            
             while True:
                 # Process any incoming data
                 if self.serial_conn.in_waiting > 0:
@@ -437,20 +447,20 @@ class SensorDataProcessor:
                         # Print non-JSON lines as debug info
                         print(f"Debug: {line}")
                 
-                # Update the plot periodically from the main thread
-                current_time = time.time()
-                if enable_plotting and self.plot_active and (current_time - last_plot_update >= plot_update_interval):
-                    self.update_plot()
-                    last_plot_update = current_time
-                
                 # Small delay to prevent CPU hogging
                 time.sleep(0.01)
+                
+                # Handle matplotlib events
+                if enable_plotting and self.plot_active and self.fig is not None:
+                    plt.pause(0.001)  # Give the GUI time to process events
                 
         except KeyboardInterrupt:
             print("\nData collection stopped by user.")
         finally:
             self.close()
 
+
+# Keep the rest of your code the same
 def list_available_ports():
     """List all available serial ports with descriptions."""
     ports = list(serial.tools.list_ports.comports())
@@ -487,7 +497,7 @@ def main():
     parser.add_argument('--list', action='store_true', help='List available serial ports and exit')
     parser.add_argument('--no-plot', action='store_true', help='Disable live plotting')
     parser.add_argument('--window', type=int, default=40, 
-                       help='Size of the rolling window for averaging packet loss (default: 20)')
+                       help='Size of the rolling window for averaging packet loss (default: 40)')
     
     args = parser.parse_args()
     
