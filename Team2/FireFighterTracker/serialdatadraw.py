@@ -7,6 +7,36 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QGraphicsView,
 from PyQt5.QtCore import Qt, QTimer, QPointF, QObject, pyqtSignal
 from PyQt5.QtGui import QPainter, QPen, QBrush, QPolygonF, QColor
 
+class IncrementalLinearRegression:
+    def __init__(self,start_point):
+        self.n = 0
+        self.Sx = 0.0
+        self.Sy = 0.0
+        self.Sxx = 0.0
+        self.Sxy = 0.0
+        self.slope = 0.0
+        self.intercept = 0.0
+        self.start_point = start_point
+        self.end_point = start_point
+
+    def add_point(self, x, y):
+        self.n += 1
+        self.Sx += x
+        self.Sy += y
+        self.Sxx += x * x
+        self.Sxy += x * y
+
+        if self.n >= 2:
+            denominator = self.n * self.Sxx - self.Sx**2
+            if denominator != 0:
+                self.slope = (self.n * self.Sxy - self.Sx * self.Sy) / denominator
+                self.intercept = (self.Sy - self.slope * self.Sx) / self.n
+
+    def in_line(self,x,y):
+        predicted_y = self.slope * x + self.intercept
+        predicted_point = QPointF(x,predicted_y)
+        distance = math.sqrt((predicted_y - y)**2)
+        
 class DataConnection(QObject):
     """Abstract base class for data connections"""
     data_received = pyqtSignal(dict)
