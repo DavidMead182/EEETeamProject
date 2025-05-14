@@ -19,8 +19,10 @@ plt.style.use("fast")
 fig=plt.figure(figsize=(12, 8))
 ax = fig.add_subplot(111)
 ax.grid(which="both")
-plt.ylabel("distance (m)")
-plt.xlabel("time (ms)")
+plt.xlabel("distance (m)")
+plt.ylabel("strength")
+ax.set_xlim(0, 7.0)
+ax.set_ylim(-1e5, 1e5)
 
 keep = 150
 lines = []
@@ -30,9 +32,9 @@ times = deque(maxlen=keep)
 for i in range(5):
     since_update.append(0)
     dists.append(deque(maxlen=keep))
-    dists[-1].append(np.array([0.0, 0.0]))
+    # dists[-1].append(np.array([0.0, 0.0]))
 
-    line, = ax.plot([], [], label=f"peak {i}")
+    line, = ax.plot([], [], 'x', label=f"peak {i}")
     lines.append(line)
 ax.legend(fontsize="small", loc="upper left")
 
@@ -53,8 +55,10 @@ def update(_):
         times.append(int(m[3]))
 
         sorted_dists = np.sort(list(zip(dists_now, strengths_now)), axis=0)
+        print(sorted_dists)
         for d, sd in zip(dists, sorted_dists):
-            if sd[0] == 1e8: d.append(d[-1])
+            if sd[0] == 1e5 and len(d) > 0: d.append(d[-1])
+            elif sd[0] == 1e5: d.append([0, 0])
             else:            d.append(sd)
         
         
@@ -65,7 +69,8 @@ def update(_):
             dists[i].clear()
             dists[i].extend(np.zeros(n))
 
-    lines[0].set_data(times, np.transpose(dists[0])[1])
+    print(dists[0][-1])
+    lines[0].set_data(np.transpose(dists[0])[0], np.transpose(dists[0])[1])
     ax.relim()
     ax.autoscale_view()
 

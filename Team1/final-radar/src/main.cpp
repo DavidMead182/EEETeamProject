@@ -38,7 +38,7 @@ uint32_t endVal = 0;
 uint32_t numDistances = 9;
 uint32_t calibrateNeeded = 0;
 uint32_t measDistErr = 0;
-uint32_t beginReading = 800;
+uint32_t beginReading = 20;
 uint32_t endReading = 7000;
 
 // Error statuses
@@ -283,16 +283,22 @@ void loop() {
 
     for (int i = 0; i < 9; i++) {
         radarSensor.getPeakDistance(i, distancePeak);
-        radarSensor.getPeakStrength(i, distancePeakStrength);
-        // if (distancePeakStrength > maxStrength) { maxStrength = distancePeakStrength; maxPeak = i; }
         
-        if (distancePeak == 0)
+        if (distancePeak == 0) {
             Serial.print(1E8);
-        else    
+        } else {    
             Serial.print(distancePeak);
+        }
         
+        Serial.print(",");
+    }
+
+    for (int i = 0; i < 9; i++) {
+        radarSensor.getPeakStrength(i, distancePeakStrength);
+        
+        Serial.print((int32_t) distancePeakStrength);
+
         if (i != 8) Serial.print(",");
-        // outputResults(i, distancePeak, UINT32_MAX - distancePeakStrength, timestamp, magX, magY, magZ);
     }
     Serial.println();
 }

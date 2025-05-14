@@ -42,8 +42,8 @@ def update(_):
 
     while ser.in_waiting:
         m=ser.readline().decode("ascii","ignore").split(",")
-        if len(m) != 13: continue
-        dists_now = list(map(float, m[4:8]))
+        if len(m) != 22: continue
+        dists_now = list(map(float, m[4:9]))
 
         if len(times) == 0:
             times.append(int(m[3]))
