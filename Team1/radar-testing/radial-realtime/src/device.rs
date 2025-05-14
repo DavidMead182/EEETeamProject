@@ -4,24 +4,25 @@ use std::str;
 
 static CALIBRATION_FILE: &str = "calibration";
 
-pub fn parse_line(file: &mut File) -> (f32, f32, f32, f32) {
+pub fn parse_line(file: &mut File) -> Option<(Vec<f32>, f32, f32, f32)> {
     let mut buf = [0u8; 1024];
     
     let _ = file.read(&mut buf).unwrap_or(0);
     let line = match str::from_utf8(&buf) {
         Ok(s) => s,
-        Err(_) => return (0.0, 0.0, 0.0, 0.0),
+        Err(_) => return None,
     };
 
     let parts: Vec<&str> = line.split(",").collect();
-    if parts.len() != 14 { return (0.0, 0.0, 0.0, 0.0) }
-    let distance = parts[4..].iter().map(|s| s.parse::<f32>().unwrap_or(f32::MAX)).fold(f32::MAX, |a, f| (if a < f {a} else {f}));
+    if parts.len() != 14 { return None }
+
+    let distances = parts[4..].iter().map(|s| s.parse::<f32>().unwrap_or(f32::MAX) / 1000.0).collect();
     
     let mag_x = parts[0].parse::<f32>().unwrap_or(0.0);
     let mag_y = parts[1].parse::<f32>().unwrap_or(0.0);
     let mag_z = parts[2].parse::<f32>().unwrap_or(0.0);
 
-    (distance / 1000.0, mag_x, mag_y, mag_z)
+    Some((distances, mag_x, mag_y, mag_z))
 }
 
 pub fn reuse_calibration() -> (f32, f32, f32, f32) {
@@ -40,7 +41,7 @@ pub fn reuse_calibration() -> (f32, f32, f32, f32) {
 }
 
 pub fn calibrate(file: &mut File) -> (f32, f32, f32, f32) {
-    let mut readings: Vec<(f32, f32, f32, f32)> = Vec::new();
+    let mut readings: Vec<(Vec<f32>, f32, f32, f32)> = Vec::new();
 
     let (tx, rx) = mpsc::channel();
 
@@ -53,7 +54,10 @@ pub fn calibrate(file: &mut File) -> (f32, f32, f32, f32) {
     });
 
     while !(rx.try_recv().unwrap_or_else(|_| false)) {
-        readings.push(parse_line(file));
+        match parse_line(file) {
+            Some(r) => readings.push(r),
+            None => continue,
+        };
     }
     let _ = listener.join();
 

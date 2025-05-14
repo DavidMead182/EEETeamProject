@@ -7,11 +7,11 @@ mod device;
 
 #[derive(Debug)]
 pub struct Ping {
-    pub distance: f32,
+    pub distances: Vec<f32>,
     pub heading: f32
 }
 
-static MAX_PINGS: usize = 2000;
+static MAX_PINGS: usize = 500;
 
 struct Model {
     rx: Receiver<Ping>,
@@ -59,8 +59,12 @@ fn model(_app: &App) -> Model {
 
     thread::spawn(move || {
         loop {
-            let (distance, mag_x, mag_y, _) = device::parse_line(&mut file);
-            let ping = Ping{ distance, heading: device::calculate_heading(mag_x, mag_y,
+            let (distances, mag_x, mag_y, _) = match device::parse_line(&mut file) {
+                Some(r) => r,
+                None => continue
+            };
+
+            let ping = Ping{ distances, heading: device::calculate_heading(mag_x, mag_y,
                                                                           calibration)};
             if ping.heading.is_nan() { continue; }
             let _ = tx.send(ping);
@@ -91,7 +95,7 @@ fn event(_app: &App, _model: &mut Model, _event: Event) {
 
 fn update(_app: &App, _model: &mut Model, _update: Update) {
     let mut ping = _model.rx.try_recv();
-
+    
     while ping.is_ok() {
         _model.pings.push_back(ping.unwrap());
         ping = _model.rx.try_recv();
@@ -117,13 +121,17 @@ fn view(app: &App, _model: &Model, frame: Frame) {
 
     if !_model.pings.is_empty() {
         let alpha_scale = 1.0 / _model.pings.len() as f32;
-        let points = _model.pings.iter().enumerate().map(|(i, p)| {
-            let v = polar_to_cartesian(p.heading, p.distance) * scale;
-            (vec2(v.x, v.y), Alpha { color: Rgb { red: alpha_scale * i as f32, blue: alpha_scale
-                * (_model.pings.len() - i) as f32, green: 0.0, standard:
-            PhantomData::<encoding::Srgb> }, alpha: alpha_scale * i as f32 })
-        });
+        let mut points = Vec::new();
 
+        for (i, pv) in _model.pings.iter().enumerate() {
+            for d in &pv.distances {
+                let v = polar_to_cartesian(pv.heading, *d) * scale;
+                points.push((vec2(v.x, v.y), Alpha { color: Rgb { red: alpha_scale * i as f32, blue: alpha_scale
+                    * (_model.pings.len() - i) as f32, green: 0.0, standard:
+                   PhantomData::<encoding::Srgb> }, alpha: alpha_scale * i as f32 }));
+            }
+        }
+        
         if points.len() != 0 {
             draw.point_mode().polyline().points_colored(points);
         }
@@ -135,8 +143,6 @@ fn view(app: &App, _model: &Model, frame: Frame) {
             .end(polar_to_cartesian(ping.heading, width))
             .head_length(7.0)
             .head_width(7.0);
-        draw.text(format!("{:.2}", ping.distance).as_str()).color(WHITE).x(app.window_rect().left() +
-            20.0).y(app.window_rect().top() - 10.0);
     });
 
 
