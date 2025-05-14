@@ -13,8 +13,8 @@ pub fn parse_line(file: &mut File) -> Option<(Vec<f32>, f32, f32, f32)> {
         Err(_) => return None,
     };
 
-    let parts: Vec<&str> = line.split(",").collect();
-    if parts.len() != 14 { return None }
+    let parts: Vec<&str> = line.trim_matches(['\0', '\n']).split(",").collect();
+    if parts.len() != 13 { return None }
 
     let distances = parts[4..].iter().map(|s| s.parse::<f32>().unwrap_or(f32::MAX) / 1000.0).collect();
     
@@ -47,7 +47,7 @@ pub fn calibrate(file: &mut File) -> (f32, f32, f32, f32) {
 
     let listener = thread::spawn(move || {
         let mut input = String::new();
-        print!("Press enter to stop calibration: ");
+        eprint!("Press enter to stop calibration: ");
         let _ = stdout().flush();
         let _ = stdin().read_line(&mut input);
         let _ = tx.send(true);

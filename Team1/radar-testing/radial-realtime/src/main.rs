@@ -12,6 +12,8 @@ pub struct Ping {
 }
 
 static MAX_PINGS: usize = 500;
+static MAX_DIST:  usize = 7;
+static ZOOM_INCREMENT: f32 = 0.5;
 
 struct Model {
     rx: Receiver<Ping>,
@@ -27,7 +29,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     if File::open(args[1].as_str()).is_err() {
-        println!("Failed to open {}. Check that the path is correct and the device is plugged in.",
+        eprintln!("Failed to open {}. Check that the path is correct and the device is plugged in.",
                  args[1]);
         return;
     }
@@ -48,7 +50,7 @@ fn model(_app: &App) -> Model {
     let fp = args[1].clone();
     let mut file = File::open(fp).unwrap();
 
-    print!("Recalibrate? (y/n): ");
+    eprint!("Recalibrate? (y/n): ");
     stdout().flush().unwrap();
     let mut input = String::new();
     stdin().read_line(&mut input).unwrap();
@@ -71,7 +73,7 @@ fn model(_app: &App) -> Model {
         }
     });
 
-    Model { rx, pings: VecDeque::new(), zoom: 5.0 }
+    Model { rx, pings: VecDeque::new(), zoom: MAX_DIST as f32 + ZOOM_INCREMENT }
 }
 
 fn event(_app: &App, _model: &mut Model, _event: Event) {
@@ -80,8 +82,8 @@ fn event(_app: &App, _model: &mut Model, _event: Event) {
             match e {
                 KeyPressed(k) => match k {
                     Key::Return => _model.pings.clear(),
-                    Key::Up => _model.zoom -= 0.5,
-                    Key::Down => _model.zoom += 0.5,
+                    Key::Up => _model.zoom -= ZOOM_INCREMENT,
+                    Key::Down => _model.zoom += ZOOM_INCREMENT,
                     _ => (),    
                 },
                 _ => ()
@@ -90,14 +92,16 @@ fn event(_app: &App, _model: &mut Model, _event: Event) {
         _ => ()
     }
 
-    if _model.zoom < 0.5 { _model.zoom = 0.5 }
+    if _model.zoom < ZOOM_INCREMENT { _model.zoom = ZOOM_INCREMENT }
 }
 
 fn update(_app: &App, _model: &mut Model, _update: Update) {
     let mut ping = _model.rx.try_recv();
     
     while ping.is_ok() {
-        _model.pings.push_back(ping.unwrap());
+        let good_point = ping.unwrap();
+        println!("{}\t{}", good_point.distances.iter().map(|f| f.to_string()).collect::<Vec<String>>().join("\t"), good_point.heading);
+        _model.pings.push_back(good_point);
         ping = _model.rx.try_recv();
         if _model.pings.len() > MAX_PINGS { _model.pings.pop_front(); }
     }
@@ -110,12 +114,12 @@ fn view(app: &App, _model: &Model, frame: Frame) {
 
     draw.background().color(BLACK);
 
-    for d in 1..=5 {
+    for d in 1..=MAX_DIST {
         draw.ellipse().no_fill().radius((d as f32) * scale).stroke(WHITE).stroke_weight(1.0);
         draw.text(d.to_string().as_str()).color(WHITE).x((d as f32) * scale + 10.0);
     }
 
-    for d in 1..=9 {
+    for d in 1..=(MAX_DIST*2) {
         draw.ellipse().no_fill().radius((d as f32) * 0.5 * scale).stroke(GREY).stroke_weight(0.5);
     }
 
