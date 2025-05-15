@@ -7,17 +7,17 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QGraphicsView,
 from PyQt5.QtCore import Qt, QTimer, QPointF, QObject, pyqtSignal
 from PyQt5.QtGui import QPainter, QPen, QBrush, QPolygonF, QColor
 
+#For ease of implementation a line wiil be initiliased with a single point
 class IncrementalLinearRegression:
-    def __init__(self,start_point,line_radius=4):
-        self.n = 0
+    def __init__(self,start_point_x,line_radius=4):
+        self.n = 1
         self.Sx = 0.0
         self.Sy = 0.0
         self.Sxx = 0.0
         self.Sxy = 0.0
         self.slope = 0.0
         self.intercept = 0.0
-        self.start_point = start_point
-        self.end_point = start_point
+        self.end_points_x = [start_point_x,start_point_x]
         self.line_radius = line_radius
 
     def add_point(self, x, y):
@@ -32,11 +32,43 @@ class IncrementalLinearRegression:
             if denominator != 0:
                 self.slope = (self.n * self.Sxy - self.Sx * self.Sy) / denominator
                 self.intercept = (self.Sy - self.slope * self.Sx) / self.n
+        
+        if self.n > 2:
+            self.update_end_points(x)
+        else:
+            self.end_points_x[1] = x
+        
 
     def predict(self, x):
         return self.slope * x + self.intercept
     
+    def in_line_radius(self,x,y):
+        predicted_y = self.predict(x)
+        distance = math.sqrt(((predicted_y - y)**2))
+        if distance<self.line_radius:
+            return True
+        else:
+            return False
+        
 
+    def update_end_points(self,x):
+        x0, x1 = self.end_points_x
+        if x < min(x0, x1):
+            # x is less than the lower endpoint → update lower endpoint
+            if x0 < x1:
+                self.end_points_x[0] = x
+            else:
+                self.end_points_x[1] = x
+        elif x > max(x0, x1):
+            # x is greater than the upper endpoint → update upper endpoint
+            if x0 > x1:
+                self.end_points_x[0] = x
+            else:
+                self.end_points_x[1] = x
+    
+    def draw_line(self):
+        pass
+    
 class DataConnection(QObject):
     """Abstract base class for data connections"""
     data_received = pyqtSignal(dict)
