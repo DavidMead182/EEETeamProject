@@ -61,13 +61,17 @@ fn model(_app: &App) -> Model {
 
     thread::spawn(move || {
         loop {
-            let (distances, mag_x, mag_y, _) = match device::parse_line(&mut file) {
+            let (distances, strengths, mag_x, mag_y, _, timestamp) = match device::parse_line(&mut file) {
                 Some(r) => r,
                 None => continue
             };
 
-            let ping = Ping{ distances, heading: device::calculate_heading(mag_x, mag_y,
-                                                                          calibration)};
+            // log pattern: 
+            // distance0 distance1 ... distance8 strength0 strength1 ... strength8 heading timestamp
+            let heading = device::calculate_heading(mag_x, mag_y, calibration);
+            println!("{}\t{}\t{heading}\t{timestamp}", distances.iter().map(|f| f.to_string()).collect::<Vec<String>>().join("\t"), strengths.iter().map(|f| f.to_string()).collect::<Vec<String>>().join("\t"));
+            
+            let ping = Ping{ distances, heading };
             if ping.heading.is_nan() { continue; }
             let _ = tx.send(ping);
         }
@@ -100,7 +104,6 @@ fn update(_app: &App, _model: &mut Model, _update: Update) {
     
     while ping.is_ok() {
         let good_point = ping.unwrap();
-        println!("{}\t{}", good_point.distances.iter().map(|f| f.to_string()).collect::<Vec<String>>().join("\t"), good_point.heading);
         _model.pings.push_back(good_point);
         ping = _model.rx.try_recv();
         if _model.pings.len() > MAX_PINGS { _model.pings.pop_front(); }
