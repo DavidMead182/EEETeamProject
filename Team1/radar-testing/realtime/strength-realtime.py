@@ -22,9 +22,9 @@ ax.grid(which="both")
 plt.xlabel("distance (m)")
 plt.ylabel("strength")
 ax.set_xlim(0, 7.0)
-ax.set_ylim(-1e5, 1e5)
+ax.set_ylim(1, 1e5)
 
-keep = 150
+keep = 20
 lines = []
 dists = []
 since_update = []
@@ -34,18 +34,19 @@ for i in range(5):
     dists.append(deque(maxlen=keep))
     # dists[-1].append(np.array([0.0, 0.0]))
 
-    line, = ax.plot([], [], 'x', label=f"peak {i}")
+    line, = ax.semilogy([1], [1], '.', label=f"peak {i}")
     lines.append(line)
-ax.legend(fontsize="small", loc="upper left")
+ax.legend(fontsize="small", loc="upper right")
 
-print(dists)
 
 # ── update func ───────────────────────────────────────────────────
 def update(_):
     global dists
 
     while ser.in_waiting:
-        m=ser.readline().decode("ascii","ignore").split(",")
+        line = ser.readline().decode("ascii","ignore")
+        print(line, end="")
+        m=line.split(",")
         if len(m) != 22: continue
         dists_now = list(map(lambda x: float(x) / 1000.0, m[4:9]))
         strengths_now = list(map(int, m[13:18]))
@@ -55,7 +56,6 @@ def update(_):
         times.append(int(m[3]))
 
         sorted_dists = np.sort(list(zip(dists_now, strengths_now)), axis=0)
-        print(sorted_dists)
         for d, sd in zip(dists, sorted_dists):
             if sd[0] == 1e5 and len(d) > 0: d.append(d[-1])
             elif sd[0] == 1e5: d.append([0, 0])
@@ -69,8 +69,12 @@ def update(_):
             dists[i].clear()
             dists[i].extend(np.zeros(n))
 
-    print(dists[0][-1])
-    lines[0].set_data(np.transpose(dists[0])[0], np.transpose(dists[0])[1])
+    if len(dists[0]) > 6:
+        print("\b" * 100, end="", file=sys.stderr)
+        print("strength: {:05f}\tdistance: {:05f}".format( np.abs(dists[0][-1][1]), dists[0][-1][0]), end="", file=sys.stderr)
+    sys.stderr.flush()
+    for line, dist in zip(lines, dists):
+        line.set_data(np.transpose(dist)[0], np.abs(np.transpose(dist)[1]))
     ax.relim()
     ax.autoscale_view()
 

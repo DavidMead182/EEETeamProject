@@ -300,5 +300,9 @@ void loop() {
 
         if (i != 8) Serial.print(",");
     }
-    Serial.println();
+    Serial.print("\n");
 }
+
+
+// LOGGING FORMAT:
+// MAGX,MAGY,MAGZ,TIMESTAMP,DISTANCE0,DISTANCE1...DISTANCE8,STRENGTH0,STRENGTH1...STRENGTH8 \n
