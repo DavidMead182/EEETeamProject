@@ -9,16 +9,21 @@ from PyQt5.QtGui import QPainter, QPen, QBrush, QPolygonF, QColor
 
 #For ease of implementation a line wiil be initiliased with a single point
 class IncrementalLinearRegression:
-    def __init__(self,start_point_x,line_radius=4):
-        self.n = 1
+    def __init__(self,start_point_x,start_point_y,scene,line_radius=5,point_radius=100):
+        self.n = 0
         self.Sx = 0.0
         self.Sy = 0.0
         self.Sxx = 0.0
         self.Sxy = 0.0
         self.slope = 0.0
         self.intercept = 0.0
-        self.end_points_x = [start_point_x,start_point_x]
+        self.end_points = [(start_point_x,start_point_y),(start_point_x,start_point_y)]
         self.line_radius = line_radius
+        self.line_item = None
+        self.scene = scene
+        self.initial_x = start_point_x
+        self.initial_y = start_point_y
+        self.point_radius = point_radius
 
     def add_point(self, x, y):
         self.n += 1
@@ -34,41 +39,69 @@ class IncrementalLinearRegression:
                 self.intercept = (self.Sy - self.slope * self.Sx) / self.n
         
         if self.n > 2:
-            self.update_end_points(x)
+            self.update_end_points(x,y)
         else:
-            self.end_points_x[1] = x
+            self.end_points[1] = (x,y)
         
+        if self.n>=2:
+            self.draw_line()
 
     def predict(self, x):
         return self.slope * x + self.intercept
     
-    def in_line_radius(self,x,y):
-        predicted_y = self.predict(x)
-        distance = math.sqrt(((predicted_y - y)**2))
-        if distance<self.line_radius:
-            return True
+    def predict_x(self, y):
+        if self.slope != 0:
+            return (y - self.intercept) / self.slope
         else:
-            return False
+            return self.initial_x
+    
+    def in_line_radius(self,x,y):
+        if self.n >= 2:
+            numerator = abs(self.slope * x - y + self.intercept)
+            denominator = math.sqrt(self.slope ** 2 + 1)
+            distance = numerator / denominator
+            return distance < self.line_radius
+        else:
+            distance = math.sqrt((x - self.initial_x) ** 2 + (y - self.initial_y) ** 2)
+            return distance < self.point_radius
+       
         
 
-    def update_end_points(self,x):
-        x0, x1 = self.end_points_x
+    def update_end_points(self,x,y):
+        (x0, y0), (x1, y1) = self.end_points
+
         if x < min(x0, x1):
-            # x is less than the lower endpoint → update lower endpoint
             if x0 < x1:
-                self.end_points_x[0] = x
+                self.end_points[0] = (x, self.predict(x))
             else:
-                self.end_points_x[1] = x
+                self.end_points[1] = (x, self.predict(x))
         elif x > max(x0, x1):
-            # x is greater than the upper endpoint → update upper endpoint
             if x0 > x1:
-                self.end_points_x[0] = x
+                self.end_points[0] = (x, self.predict(x))
             else:
-                self.end_points_x[1] = x
-    
-    def draw_line(self):
-        pass
-    
+                self.end_points[1] = (x, self.predict(x))
+
+        if y < min(y0, y1):
+            if y0 < y1:
+                self.end_points[0] = (self.predict_x(y), y)
+            else:
+                self.end_points[1] = (self.predict_x(y), y)
+        elif y > max(y0, y1):
+            if y0 > y1:
+                self.end_points[0] = (self.predict_x(y), y)
+            else:
+                self.end_points[1] = (self.predict_x(y), y)
+
+                
+    def draw_line(self): 
+        if self.line_item:
+            self.scene.removeItem(self.line_item)
+            self.line_item = None
+
+        wall_pen = QPen(QColor(0, 0, 255), 2)  # Blue
+
+        (x0, y0), (x1, y1) = self.end_points
+        self.line_item = self.scene.addLine(x0, y0, x1, y1, wall_pen)
 class DataConnection(QObject):
     """Abstract base class for data connections"""
     data_received = pyqtSignal(dict)
@@ -125,6 +158,8 @@ class MinimapApp(QMainWindow):
 
         # Connection
         self.connection = None
+
+        self.lines = []
         
     def set_connection(self, connection):
         """Set the data connection to use"""
@@ -197,18 +232,21 @@ class MinimapApp(QMainWindow):
         scaled_distance = distance / 2  # Scale down for better visibility
         x = self.current_position.x() + scaled_distance * math.cos(rad)
         y = self.current_position.y() + scaled_distance * math.sin(rad)
-        
-        if self.prev_point is not None:
-                # Draw a line from previous point to current point
-                self.scene.addLine(
-                    self.prev_point.x(), self.prev_point.y(),
-                    x, y,
-                    wall_pen
-                )
-        self.prev_point = QPointF(x, y)    
+          
         # Draw wall point (larger size: 10x10 pixels)
         self.scene.addEllipse(x-5, y-5, 10, 10, wall_pen, wall_brush)
         
+        matched = False
+        for line in self.lines:
+            if line.in_line_radius(x, y):
+                line.add_point(x, y)
+                matched = True
+
+        if not matched:
+            new_line = IncrementalLinearRegression(start_point_x=x,start_point_y=y,scene=self.scene)
+            new_line.add_point(x, y)
+            self.lines.append(new_line)
+
         # Draw person trail (green)
         if len(self.person_trail) > 1:
             trail_pen = QPen(QColor(0, 255, 0, 150), 2)
