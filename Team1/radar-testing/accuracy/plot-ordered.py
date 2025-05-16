@@ -8,14 +8,21 @@ peaks = {}
 data = np.loadtxt(sys.argv[1])
 
 init_time = 0
+current_peaks = []
 for d in data:
-    if not d[0] in peaks:
-        peaks[d[0]] = ([], [])
-
     if init_time == 0:
         init_time = d[3]
-    peaks[d[0]][0].append(d[1])
-    peaks[d[0]][1].append(d[3] - init_time)
+    
+    if d[0] == 0 and len(current_peaks) != 0:
+        current_peaks = np.sort(current_peaks, axis=0)
+        for cp in current_peaks:
+            if cp[0] not in peaks: peaks[cp[0]] = [[], []]
+            peaks[cp[0]][1].append(cp[3] - init_time)
+            peaks[cp[0]][0].append(cp[1])
+
+        current_peaks = []
+
+    current_peaks.append(d) 
 
 plt.figure(figsize=(10, 6), layout="constrained")
 for p, d in peaks.items():
@@ -25,4 +32,5 @@ plt.legend(loc="upper left")
 plt.grid(which="both") 
 plt.xlabel("time (s)") 
 plt.ylabel("distance (m)")
-plt.savefig(f"plots/{sys.argv[1]}.pdf")
+plt.ylim(0, 7) 
+plt.savefig(f"plots/{sys.argv[1]}-ordered.pdf")
