@@ -46,7 +46,7 @@ for p, d in peaks.items():
 
     d = np.array(d)
     plt.plot(d[1] / 1000.0, d[0] / 1000.0, label=f"peak {int(p + 1)}")
-    plt.plot(d[1] / 1000.0, median_filtered / 1000.0, label=f"peak {int(p + 1)}")
+    plt.plot(d[1] / 1000.0, median_filtered / 1000.0, "--", label=f"peak {int(p + 1)}")
 plt.legend(loc="upper left") 
 plt.grid(which="both") 
 plt.xlabel("time (s)") 
