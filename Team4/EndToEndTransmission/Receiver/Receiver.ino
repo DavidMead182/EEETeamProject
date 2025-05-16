@@ -1,18 +1,18 @@
 #include <SPI.h>
 #include <RH_RF95.h>
+#include <RHHardwareSPI1.h>
 
-#define RFM95_CS 10
-#define RFM95_RST 9
-#define RFM95_INT 2
+#define RFM95_CS 38 // arduino pin 10
+#define RFM95_RST 29 // arduino pin 9
+#define RFM95_INT 28 // arduino pin 2
 
 #define RF95_FREQ 868.0
 
 // #define SPI_BUS SPI1  // Uncomment if using SPI1
 // #define SPI_BUS SPI2  // Uncomment if using SPI2
 
-
 // Singleton instance of the radio driver
-RH_RF95 rf95(RFM95_CS, RFM95_INT);
+RH_RF95 rf95(RFM95_CS, RFM95_INT, hardware_spi1);
 
 // Variables for tracking packets
 uint16_t lastSequence = 0;
@@ -21,7 +21,7 @@ bool firstPacket = true;
 unsigned long lastPacketTime = 0;  // Track time of last packet
 float packetRate = 0.0;           // Packets per second
 unsigned long rateUpdateTime = 0;  // Time of last rate calculation
-uint16_t packetCount = 0;         // Count packets for rate calculation 
+uint16_t packetCount = 0;         // Count packets for rate calculation
 
 void setup() {
   pinMode(RFM95_RST, OUTPUT);
@@ -92,10 +92,10 @@ void loop() {
       // Convert the received data to JSON format
       char jsonBuffer[256];
       convertToJson((char*)buf, jsonBuffer, sizeof(jsonBuffer));
-      
+
       // Send the JSON data to Python via serial
       Serial.println(jsonBuffer);
-      
+
       // Send an acknowledgment back
       const char* responseMsg = "ACK";
       rf95.send((uint8_t*)responseMsg, strlen(responseMsg));
@@ -121,12 +121,12 @@ void convertToJson(char* input, char* jsonOutput, size_t maxSize) {
 
   // Initialize JSON string
   strcpy(jsonOutput, "{");
-  
+
   // Parse the input string which is in format "SEQ:{seq},P:{pitch},R:{roll},Y:{yaw},D:{distance},AX:{accelX},AY:{accelY},AZ:{accelZ},T:{timestamp}"
   char *token = strtok(input, ",");
   bool firstItem = true;
   uint16_t currentSequence = 0;
-  
+
   while (token != NULL) {
     // Add comma if not the first item
     if (!firstItem) {
@@ -134,11 +134,11 @@ void convertToJson(char* input, char* jsonOutput, size_t maxSize) {
     } else {
       firstItem = false;
     }
-    
+
     char key[20];
     float value;
     unsigned long timeValue;
-    
+
     // Check what type of data this is
     if (token[0] == 'S' && token[1] == 'E' && token[2] == 'Q' && token[3] == ':') {  // Sequence
       strcpy(key, "\"sequence\"");
@@ -146,12 +146,12 @@ void convertToJson(char* input, char* jsonOutput, size_t maxSize) {
       strncpy(seqHex, token + 4, 3); // Get the 3 hex digits
       currentSequence = strtol(seqHex, NULL, 16); // Convert hex to decimal
       sprintf(jsonOutput + strlen(jsonOutput), "%s:%d", key, currentSequence);
-      
+
       // Calculate packet loss
       if (!firstPacket) {
         // Expected next sequence
         uint16_t expectedSeq = (lastSequence + 1) & 0xFFF;
-        
+
         // If current sequence is not what we expected
         if (currentSequence != expectedSeq) {
           // Calculate how many packets were lost
@@ -167,20 +167,20 @@ void convertToJson(char* input, char* jsonOutput, size_t maxSize) {
       } else {
         firstPacket = false;
       }
-      
+
       // Update last sequence
       lastSequence = currentSequence;
-      
+
       // Add packet loss stats to JSON
       sprintf(jsonOutput + strlen(jsonOutput), ",\"packets_lost\":%d", packetsLost);
-      
+
       // Add packet rate to JSON
       char rateStr[15];
       dtostrf(packetRate, 1, 2, rateStr);
       sprintf(jsonOutput + strlen(jsonOutput), ",\"packet_rate\":%s", rateStr);
 
        // Add RSSI to JSON
-      sprintf(jsonOutput + strlen(jsonOutput), ",\"rssi\":%d", rf95.lastRssi());  
+      sprintf(jsonOutput + strlen(jsonOutput), ",\"rssi\":%d", rf95.lastRssi());
     }
     else if (token[0] == 'P' && token[1] == ':') {  // Pitch
       strcpy(key, "\"pitch\"");
@@ -236,11 +236,11 @@ void convertToJson(char* input, char* jsonOutput, size_t maxSize) {
       timeValue = atol(token + 2);  // Skip "T:"
       sprintf(jsonOutput + strlen(jsonOutput), "%s:%lu", key, timeValue);
     }
-    
+
     // Get next token
     token = strtok(NULL, ",");
   }
-  
+
   // Close the JSON object
   strcat(jsonOutput, "}");
 }
