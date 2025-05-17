@@ -76,7 +76,7 @@ class IncrementalLinearRegression:
 
     def update_end_points(self,x,y):
         (x0, y0), (x1, y1) = self.end_points
-        if self.slope<5:
+        if (self.slope**2)<1:
             if x < min(x0, x1):
                 new_y = self.predict(x)
                 if x0 < x1:
