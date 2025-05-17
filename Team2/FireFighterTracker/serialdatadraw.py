@@ -9,7 +9,7 @@ from PyQt5.QtGui import QPainter, QPen, QBrush, QPolygonF, QColor
 
 #For ease of implementation a line wiil be initiliased with a single point
 class IncrementalLinearRegression:
-    def __init__(self,start_point_x,start_point_y,scene,line_radius=5,point_radius=100):
+    def __init__(self,start_point_x,start_point_y,scene,line_radius=50):
         self.n = 0
         self.Sx = 0.0
         self.Sy = 0.0
@@ -23,7 +23,6 @@ class IncrementalLinearRegression:
         self.scene = scene
         self.initial_x = start_point_x
         self.initial_y = start_point_y
-        self.point_radius = point_radius
 
     def add_point(self, x, y):
         self.n += 1
@@ -55,16 +54,24 @@ class IncrementalLinearRegression:
         else:
             return self.initial_x
     
+    def in_boundary(self,x,y):
+        (x0, y0), (x1, y1) = self.end_points
+
+        if x < min(x0, x1) and x > max(x0, x1) and y < min(y0, y1) and y > max(y0, y1):
+           return True
+        else:
+            return False
+    
     def in_line_radius(self,x,y):
         if self.n >= 2:
-            numerator = abs(self.slope * x - y + self.intercept)
-            denominator = math.sqrt(self.slope ** 2 + 1)
-            distance = numerator / denominator
-            return distance < self.line_radius
-        else:
-            distance = math.sqrt((x - self.initial_x) ** 2 + (y - self.initial_y) ** 2)
-            return distance < self.point_radius
-       
+            if self.in_boundary(x,y):
+                distance = math.sqrt((x - self.predict_x(y)) ** 2 + (y - self.predict(x)) ** 2)
+            else:
+                temp = min(math.sqrt((x - self.end_points[0][0]) ** 2 + (y - self.end_points[0][1]) ** 2),math.sqrt((x - self.end_points[1][0]) ** 2 + (y - self.end_points[1][1]) ** 2))
+                distance = max(temp, math.sqrt((x - self.predict_x(y)) ** 2 + (y - self.predict(x)) ** 2) )
+        else:   
+            distance = math.sqrt((x - self.initial_x) ** 2 + (y - self.initial_y) ** 2)   
+        return distance < self.line_radius
         
 
     def update_end_points(self,x,y):
@@ -72,25 +79,25 @@ class IncrementalLinearRegression:
 
         if x < min(x0, x1):
             if x0 < x1:
-                self.end_points[0] = (x, self.predict(x))
+                self.end_points[0] = (self.predict_x(y), self.predict(x))
             else:
-                self.end_points[1] = (x, self.predict(x))
+                self.end_points[1] = (self.predict_x(y), self.predict(x))
         elif x > max(x0, x1):
             if x0 > x1:
-                self.end_points[0] = (x, self.predict(x))
+                self.end_points[0] = (self.predict_x(y), self.predict(x))
             else:
-                self.end_points[1] = (x, self.predict(x))
+                self.end_points[1] = (self.predict_x(y), self.predict(x))
 
         if y < min(y0, y1):
             if y0 < y1:
-                self.end_points[0] = (self.predict_x(y), y)
+                self.end_points[0] = (self.predict_x(y), self.predict(x))
             else:
-                self.end_points[1] = (self.predict_x(y), y)
+                self.end_points[1] = (self.predict_x(y), self.predict(x))
         elif y > max(y0, y1):
             if y0 > y1:
-                self.end_points[0] = (self.predict_x(y), y)
+                self.end_points[0] = (self.predict_x(y), self.predict(x))
             else:
-                self.end_points[1] = (self.predict_x(y), y)
+                self.end_points[1] = (self.predict_x(y), self.predict(x))
 
                 
     def draw_line(self): 
@@ -102,6 +109,9 @@ class IncrementalLinearRegression:
 
         (x0, y0), (x1, y1) = self.end_points
         self.line_item = self.scene.addLine(x0, y0, x1, y1, wall_pen)
+
+
+
 class DataConnection(QObject):
     """Abstract base class for data connections"""
     data_received = pyqtSignal(dict)
