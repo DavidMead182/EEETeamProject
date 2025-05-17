@@ -9,7 +9,7 @@ from PyQt5.QtGui import QPainter, QPen, QBrush, QPolygonF, QColor
 
 #For ease of implementation a line wiil be initiliased with a single point
 class IncrementalLinearRegression:
-    def __init__(self,start_point_x,start_point_y,scene,line_radius=50):
+    def __init__(self,start_point_x,start_point_y,scene,line_radius=100):
         self.n = 0
         self.Sx = 0.0
         self.Sy = 0.0
@@ -76,29 +76,33 @@ class IncrementalLinearRegression:
 
     def update_end_points(self,x,y):
         (x0, y0), (x1, y1) = self.end_points
-
-        if x < min(x0, x1):
-            if x0 < x1:
-                self.end_points[0] = (self.predict_x(y), self.predict(x))
-            else:
-                self.end_points[1] = (self.predict_x(y), self.predict(x))
-        elif x > max(x0, x1):
-            if x0 > x1:
-                self.end_points[0] = (self.predict_x(y), self.predict(x))
-            else:
-                self.end_points[1] = (self.predict_x(y), self.predict(x))
-
-        if y < min(y0, y1):
-            if y0 < y1:
-                self.end_points[0] = (self.predict_x(y), self.predict(x))
-            else:
-                self.end_points[1] = (self.predict_x(y), self.predict(x))
-        elif y > max(y0, y1):
-            if y0 > y1:
-                self.end_points[0] = (self.predict_x(y), self.predict(x))
-            else:
-                self.end_points[1] = (self.predict_x(y), self.predict(x))
-
+        if self.slope<5:
+            if x < min(x0, x1):
+                new_y = self.predict(x)
+                if x0 < x1:
+                    self.end_points[0] = (self.predict_x(new_y), new_y)
+                else:
+                    self.end_points[1] = (self.predict_x(new_y), new_y)
+            elif x > max(x0, x1):
+                new_y = self.predict(x)
+                if x0 > x1:
+                    self.end_points[0] = (self.predict_x(new_y), new_y)
+                else:
+                    self.end_points[1] = (self.predict_x(new_y), new_y)
+        else:
+            if y < min(y0, y1):
+                new_x = self.predict_x(y)
+                if y0 < y1:
+                    self.end_points[0] = (new_x, self.predict(new_x))
+                else:
+                    self.end_points[1] = (new_x, self.predict(new_x))
+            elif y > max(y0, y1):
+                new_x = self.predict_x(y)
+                if y0 > y1:
+                    self.end_points[0] = (new_x, self.predict(new_x))
+                else:
+                    self.end_points[1] = (new_x, self.predict(new_x))
+                    
                 
     def draw_line(self): 
         if self.line_item:
