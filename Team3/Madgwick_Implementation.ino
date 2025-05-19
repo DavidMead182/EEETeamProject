@@ -37,8 +37,8 @@ void setup() {
     Serial.println(status);
     while(1) {}
    }
-  IMU.configAccel(ICM20948::ACCEL_RANGE_16G, ICM20948::ACCEL_DLPF_BANDWIDTH_50HZ);
-  IMU.configGyro(ICM20948::GYRO_RANGE_2000DPS, ICM20948::GYRO_DLPF_BANDWIDTH_51HZ);
+  IMU.configAccel(ICM20948::ACCEL_RANGE_4G, ICM20948::ACCEL_DLPF_BANDWIDTH_50HZ);
+  IMU.configGyro(ICM20948::GYRO_RANGE_250DPS, ICM20948::GYRO_DLPF_BANDWIDTH_51HZ);
   IMU.setGyroSrd(113); // Output data rate is 1125/(1 + srd) Hz
   IMU.setAccelSrd(113);
   IMU.enableDataReadyInterrupt();
@@ -112,9 +112,9 @@ void loop() {
 }
 
 float convertRawAcceleration(int aRaw) {
-  // since we are using 2G range
-  // -2g maps to a raw value of -32768
-  // +2g maps to a raw value of 32767
+  // since we are using 4G range
+  // -4g maps to a raw value of -32768
+  // +4g maps to a raw value of 32767
   
   float a = (aRaw * 2.0) / 32768.0;
   return a;
