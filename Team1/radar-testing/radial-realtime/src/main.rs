@@ -1,7 +1,6 @@
 use std::{collections::VecDeque, env::{self}, fs::File, marker::PhantomData, sync::mpsc::{self, Receiver}, thread};
 use std::io::{stdin, stdout, Write};
 use nannou::{color::{encoding, Alpha}, prelude::*};
-use crate::device::reuse_calibration;
 
 mod device;
 
@@ -50,25 +49,17 @@ fn model(_app: &App) -> Model {
     let fp = args[1].clone();
     let mut file = File::open(fp).unwrap();
 
-    eprint!("Recalibrate? (y/n): ");
-    stdout().flush().unwrap();
-    let mut input = String::new();
-    stdin().read_line(&mut input).unwrap();
-    let calibration = if input.trim().eq("y") { device::calibrate(&mut file) } else {
-        reuse_calibration() };
-
     let (tx, rx) = mpsc::channel();
 
     thread::spawn(move || {
         loop {
-            let (distances, strengths, mag_x, mag_y, _, timestamp) = match device::parse_line(&mut file) {
+            let (distances, strengths, heading, timestamp) = match device::parse_line(&mut file) {
                 Some(r) => r,
-                None => continue
+                None =>  { continue; }
             };
 
             // log pattern: 
             // distance0 distance1 ... distance8 strength0 strength1 ... strength8 heading timestamp
-            let heading = device::calculate_heading(mag_x, mag_y, calibration);
             println!("{}\t{}\t{heading}\t{timestamp}", distances.iter().map(|f| f.to_string()).collect::<Vec<String>>().join("\t"), strengths.iter().map(|f| f.to_string()).collect::<Vec<String>>().join("\t"));
             
             let ping = Ping{ distances, heading };

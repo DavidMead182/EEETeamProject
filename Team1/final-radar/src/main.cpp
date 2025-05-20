@@ -6,7 +6,6 @@
 
 void setup() {
     Serial.begin(921600);
-    Serial.println("XM125 Example 9: Basic Advanced Settings");
 
     Wire.begin();
 
@@ -14,15 +13,22 @@ void setup() {
 
     imu_setup();
 
-
     delay(1000);
 }
 
 void loop() {
     radar_check_errors();
 
-    // Read PeakX Distance and PeakX Strength registers for the number of distances detected
     uint64_t timestamp = millis();
+
+    imu_packet packet;
+    imu_read_packet(&packet);
+    if (!packet.valid) { return; }
+
+    Serial.print(packet.yaw);
+    Serial.print(",");
+    Serial.print(timestamp);
+    Serial.print(",");
 
     int n = 9;
     uint32_t distances[n]; 
@@ -47,11 +53,9 @@ void loop() {
         if (i != n-1) Serial.print(",");
     }
 
-    imu_packet packet;
-    imu_read_packet(&packet);
-    if (!packet.valid) { return; }
+    
 
-    Serial.print(packet.x_rate);
+    /* Serial.print(packet.x_rate);
     Serial.print(","); 
     Serial.print(packet.y_rate);
     Serial.print(","); 
@@ -69,7 +73,7 @@ void loop() {
     Serial.print(","); 
     Serial.print(packet.pitch);
     Serial.print(","); 
-    Serial.print(packet.yaw);
+    Serial.print(packet.yaw); */
     Serial.print("\n"); 
 }
 
