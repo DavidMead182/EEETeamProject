@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as ani
 from collections import defaultdict, deque
 import numpy as np
+from filter import Filter
 
 # ── args ──────────────────────────────────────────────────────────
 ap = argparse.ArgumentParser()
@@ -25,15 +26,25 @@ plt.xlabel("time (ms)")
 keep = 50
 lines = []
 dists = []
+dists_filtered = []
 since_update = []
+iir_filters = []
 times = deque(maxlen=keep)
 for i in range(5):
     since_update.append(0)
     dists.append(deque(maxlen=keep))
     dists[-1].append(0.0)
 
+    dists_filtered.append(deque(maxlen=keep))
+    dists_filtered[-1].append(0.0)
+
     line, = ax.plot([], [], label=f"peak {i}")
     lines.append(line)
+    line, = ax.plot([], [], "--", color=line.get_color(), label=f"peak {i} filtered")
+    lines.append(line)
+
+    iir_filters.append(Filter(10, 2.5))
+
 ax.legend(fontsize="small", loc="upper left")
 
 # ── update func ───────────────────────────────────────────────────
@@ -51,9 +62,11 @@ def update(_):
 
         sorted_dists = np.sort(dists_now)
         i = 0
-        for d, sd in zip(dists, sorted_dists):
+        for d, df, f, sd in zip(dists, dists_filtered, iir_filters, sorted_dists):
             if sd == 1e8: d.append(d[-1]);       since_update[i] += 1
-            else:         d.append(sd / 1000.0); since_update[i]  = 0
+            else:         d.append(sd / 1000.0); since_update[i]  = 0 
+            
+            df.append(f.filter(d[-1]))
             i += 1
         
 
@@ -61,11 +74,16 @@ def update(_):
         if since_update[i] >= keep: 
             n = len(dists[i])
             dists[i].clear()
+            dists_filtered[i].clear()
             dists[i].extend(np.zeros(n))
+            dists_filtered[i].extend(np.zeros(n))
 
-    # plt.plot(range(len(dists)), dists)
-    for line, dist in zip(lines, dists):
-        line.set_data(times, dist)
+    for i in range(len(dists)):
+        lines[i*2].set_data(times, dists[i])
+        lines[i*2 + 1].set_data(times, dists_filtered[i])
+
+#    for line, dist in zip(lines, dists):
+#        line.set_data(times, dist)
     ax.relim()
     ax.autoscale_view()
 
