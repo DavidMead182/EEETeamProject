@@ -67,11 +67,17 @@ void setup() {
 
     radar_setup(20, 7000);
 
+    int attempts = 0;
     do {
         delay(500);
         imu.begin(Wire, 1);
         log_init_error(imu.status);
-    } while (imu.status != ICM_20948_Stat_Ok);
+        attempts++;
+    } while (imu.status != ICM_20948_Stat_Ok && attempts <= 4);
+
+    if (attempts > 4) {
+        Serial.println("4 failed attempts, giving up on IMU.");
+    }
 
 
     delay(1000);
