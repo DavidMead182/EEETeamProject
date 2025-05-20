@@ -75,9 +75,10 @@ class IncrementalLinearRegression:
     def in_boundary(self,x,y):
         (x0, y0), (x1, y1) = self.end_points
 
-        if x < min(x0, x1) and x > max(x0, x1) and y < min(y0, y1) and y > max(y0, y1):
+        if x > min(x0, x1) and x < max(x0, x1) and y > min(y0, y1) and y < max(y0, y1):
             return True
         else:
+            print("out")
             return False
         
     def find_relevant_end_point(self,x,y):
@@ -359,6 +360,7 @@ class MinimapApp(QMainWindow):
                 
 
         if not matched:
+            print("new line")
             new_line = IncrementalLinearRegression(start_point_x=x,start_point_y=y,scene=self.scene)
             new_line.add_point(x, y)
             self.lines.append(new_line)
