@@ -22,7 +22,7 @@ ax.grid(which="both")
 plt.ylabel("distance (m)")
 plt.xlabel("time (ms)")
 
-keep = 150
+keep = 50
 lines = []
 dists = []
 since_update = []
@@ -50,9 +50,11 @@ def update(_):
         times.append(int(m[3]))
 
         sorted_dists = np.sort(dists_now)
+        i = 0
         for d, sd in zip(dists, sorted_dists):
-            if sd == 1e8: d.append(d[-1])
-            else:         d.append(sd / 1000.0)
+            if sd == 1e8: d.append(d[-1]);       since_update[i] += 1
+            else:         d.append(sd / 1000.0); since_update[i]  = 0
+            i += 1
         
 
     for i in range(len(dists)):
