@@ -87,23 +87,10 @@ void setup() {
 }
 
 void loop() {
-    /* Serial.println("START OF LOOP");
     radar_check_errors();
 
     // Read PeakX Distance and PeakX Strength registers for the number of distances detected
     uint64_t timestamp = millis();
-    imu.getAGMT();
-    float magX = imu.magX();
-    float magY = imu.magY();
-    float magZ = imu.magZ();
-    Serial.print(magX);
-    Serial.print(",");
-    Serial.print(magY);
-    Serial.print(",");
-    Serial.print(magZ);
-    Serial.print(",");
-    Serial.print(timestamp);
-    Serial.print(",");
 
     int n = 9;
     uint32_t distances[n]; 
@@ -127,33 +114,29 @@ void loop() {
 
         if (i != n-1) Serial.print(",");
     }
-    Serial.print("\n");
-
-    Serial.println("GOT RADAR");
-    Serial.flush(); */
 
     imu_packet packet;
     imu_read_packet(&packet);
     if (!packet.valid) { return; }
 
     Serial.print(packet.x_rate);
-    Serial.print("\t"); 
+    Serial.print(","); 
     Serial.print(packet.y_rate);
-    Serial.print("\t"); 
+    Serial.print(","); 
     Serial.print(packet.z_rate);
-    Serial.print("\t"); 
+    Serial.print(","); 
     Serial.print(packet.x_acc);
-    Serial.print("\t"); 
+    Serial.print(","); 
     Serial.print(packet.y_acc); 
-    Serial.print("\t"); 
+    Serial.print(","); 
     Serial.print(packet.z_acc);
-    Serial.print("\t"); 
+    Serial.print(","); 
     Serial.print(packet.temp);
-    Serial.print("\t"); 
+    Serial.print(","); 
     Serial.print(packet.roll);
-    Serial.print("\t"); 
+    Serial.print(","); 
     Serial.print(packet.pitch);
-    Serial.print("\t"); 
+    Serial.print(","); 
     Serial.print(packet.yaw);
     Serial.print("\n"); 
 }
