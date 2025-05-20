@@ -2,6 +2,7 @@
 #include <arduino-timer.h>
 #include "ICM_20948.h"
 #include "radar.h"
+#include "imu.h"
 
 ICM_20948_I2C imu;
 
@@ -60,14 +61,16 @@ void log_init_error(int status) {
 
 
 void setup() {
-    Serial.begin(115200);
+    Serial.begin(921600);
     Serial.println("XM125 Example 9: Basic Advanced Settings");
 
     Wire.begin();
 
     radar_setup(20, 7000);
 
-    int attempts = 0;
+    imu_setup();
+
+    /* int attempts = 0;
     do {
         delay(500);
         imu.begin(Wire, 1);
@@ -77,13 +80,14 @@ void setup() {
 
     if (attempts > 4) {
         Serial.println("4 failed attempts, giving up on IMU.");
-    }
+    } */
 
 
     delay(1000);
 }
 
 void loop() {
+    /* Serial.println("START OF LOOP");
     radar_check_errors();
 
     // Read PeakX Distance and PeakX Strength registers for the number of distances detected
@@ -124,6 +128,34 @@ void loop() {
         if (i != n-1) Serial.print(",");
     }
     Serial.print("\n");
+
+    Serial.println("GOT RADAR");
+    Serial.flush(); */
+
+    imu_packet packet;
+    imu_read_packet(&packet);
+    if (!packet.valid) { return; }
+
+    Serial.print(packet.x_rate);
+    Serial.print("\t"); 
+    Serial.print(packet.y_rate);
+    Serial.print("\t"); 
+    Serial.print(packet.z_rate);
+    Serial.print("\t"); 
+    Serial.print(packet.x_acc);
+    Serial.print("\t"); 
+    Serial.print(packet.y_acc); 
+    Serial.print("\t"); 
+    Serial.print(packet.z_acc);
+    Serial.print("\t"); 
+    Serial.print(packet.temp);
+    Serial.print("\t"); 
+    Serial.print(packet.roll);
+    Serial.print("\t"); 
+    Serial.print(packet.pitch);
+    Serial.print("\t"); 
+    Serial.print(packet.yaw);
+    Serial.print("\n"); 
 }
 
 
