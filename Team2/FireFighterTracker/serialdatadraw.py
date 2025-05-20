@@ -55,7 +55,7 @@ class IncrementalLinearRegression:
                 self.intercept = (self.Sy - self.slope * self.Sx) / self.n
             
         if self.n > 2:
-            self.update_end_points(x,y)
+            self.update_end_points(x,y,self.n>10)
         else:
             self.end_points[1] = (x,y)
         
@@ -78,7 +78,6 @@ class IncrementalLinearRegression:
         if x > min(x0, x1) and x < max(x0, x1) and y > min(y0, y1) and y < max(y0, y1):
             return True
         else:
-            print("out")
             return False
         
     def find_relevant_end_point(self,x,y):
@@ -99,30 +98,36 @@ class IncrementalLinearRegression:
         
         return distance < line_radius
         
-    def update_end_points(self, x, y):
+    def update_end_points(self, x, y,established_trend=False): 
         if (self.in_boundary(x,y))==False:
-            (x0, y0), (x1, y1) = self.end_points
-
-            if (self.slope ** 2) < 1:
-                new_y = self.predict(x)
-                new_point = (self.predict_x(new_y), new_y)
-
-                if x < min(x0, x1):
-                    index = 0 if x0 < x1 else 1
-                    self.end_points[index] = new_point
-                elif x > max(x0, x1):
-                    index = 0 if x0 > x1 else 1
-                    self.end_points[index] = new_point
+            relevant_end_point = self.find_relevant_end_point(x, y)
+        
+            x1, y1 = self.end_points[relevant_end_point]
+            
+            # Handle the case where the x-values are equal to avoid division by zero
+            if x == x1:
+                slope_to_new_point = float('inf')  # or use None or a special value for vertical line
             else:
-                new_x = self.predict_x(y)
-                new_point = (new_x, self.predict(new_x))
+                slope_to_new_point = (y - y1) / (x - x1)
+            accept = False
+            if established_trend:
+                current_angle = math.atan(self.slope)
+                new_angle = math.atan(slope_to_new_point)
+                angle_diff = abs(current_angle - new_angle)
 
-                if y < min(y0, y1):
-                    index = 0 if y0 < y1 else 1
-                    self.end_points[index] = new_point
-                elif y > max(y0, y1):
-                    index = 0 if y0 > y1 else 1
-                    self.end_points[index] = new_point
+                if angle_diff<math.radians(45):
+                    accept = True
+
+            if not established_trend or accept:
+                if (self.slope ** 2) < 1:
+                    new_y = self.predict(x)
+                    new_point = (self.predict_x(new_y), new_y)
+                else:
+                    new_x = self.predict_x(y)
+                    new_point = (new_x, self.predict(new_x))
+                self.end_points[relevant_end_point] = new_point
+                
+                        
 
     def draw_line(self): 
         self.erase_line()
