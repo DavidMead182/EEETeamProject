@@ -1,64 +1,8 @@
 #include <Arduino.h>
 #include <arduino-timer.h>
-#include "ICM_20948.h"
+#include <Wire.h>
 #include "radar.h"
 #include "imu.h"
-
-ICM_20948_I2C imu;
-
-void log_init_error(int status) {
-    switch (status) { 
-    case ICM_20948_Stat_Err:
-        Serial.println("error");
-        break;       // A general error
-    case ICM_20948_Stat_NotImpl:
-        Serial.println("Not implemented");
-        break; // Returned by virtual functions that are not implemented
-    case ICM_20948_Stat_ParamErr:
-        Serial.println("Parameter error");
-        break;
-    case ICM_20948_Stat_WrongID:
-        Serial.println("Wrong ID");
-        break;
-    case ICM_20948_Stat_InvalSensor:
-        Serial.println("Invalid sensor");
-        break; // Tried to apply a function to a sensor that does not support it (e.g. DLPF to the temperature sensor)
-    case ICM_20948_Stat_NoData:
-        Serial.println("No data");
-        break;
-    case ICM_20948_Stat_SensorNotSupported:
-        Serial.println("Sensor not supported");
-        break;
-    case ICM_20948_Stat_DMPNotSupported:
-        Serial.println("DMP not supported");
-        break;    // DMP not supported (no #define ICM_20948_USE_DMP)
-    case ICM_20948_Stat_DMPVerifyFail:
-        Serial.println("DMP failed verify");
-        break;      // DMP was written but did not verify correctly
-    case ICM_20948_Stat_FIFONoDataAvail:
-        Serial.println("No FIFO data");
-        break;    // FIFO contains no data
-    case ICM_20948_Stat_FIFOIncompleteData:
-        Serial.println("Incomplete FIFO data");
-        break;  // FIFO contained incomplete data
-    case ICM_20948_Stat_FIFOMoreDataAvail:
-        Serial.println("More FIFO data avail");
-        break;  // FIFO contains more data
-    case ICM_20948_Stat_UnrecognisedDMPHeader:
-        Serial.println("Unrecognised DMP header");
-        break;
-    case ICM_20948_Stat_UnrecognisedDMPHeader2:
-        Serial.println("Unrecognised DMP header");
-        break;
-    case ICM_20948_Stat_InvalDMPRegister:
-        Serial.println("Invalid DMP register");
-        break;
-    default:
-        Serial.print("Unknown error: ");
-        Serial.println(status);
-    } 
-}
-
 
 void setup() {
     Serial.begin(921600);
@@ -69,18 +13,6 @@ void setup() {
     radar_setup(20, 7000);
 
     imu_setup();
-
-    /* int attempts = 0;
-    do {
-        delay(500);
-        imu.begin(Wire, 1);
-        log_init_error(imu.status);
-        attempts++;
-    } while (imu.status != ICM_20948_Stat_Ok && attempts <= 4);
-
-    if (attempts > 4) {
-        Serial.println("4 failed attempts, giving up on IMU.");
-    } */
 
 
     delay(1000);
