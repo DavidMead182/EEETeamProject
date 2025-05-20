@@ -9,7 +9,7 @@ from PyQt5.QtGui import QPainter, QPen, QBrush, QPolygonF, QColor
 
 #For ease of implementation a line wiil be initiliased with a single point
 class IncrementalLinearRegression:
-    def __init__(self,start_point_x,start_point_y,scene,line_radius=100):
+    def __init__(self,start_point_x,start_point_y,scene,line_radius=50):
         self.n = 0
         self.Sx = 0.0
         self.Sy = 0.0
@@ -23,6 +23,9 @@ class IncrementalLinearRegression:
         self.scene = scene
         self.initial_x = start_point_x
         self.initial_y = start_point_y
+        self.angle_tolerance = 1
+        self.starting_angle_tolerance = 90
+        self.slope_learning_rate = 1
 
     def add_point(self, x, y):
         self.n += 1
@@ -35,14 +38,14 @@ class IncrementalLinearRegression:
             denominator = self.n * self.Sxx - self.Sx ** 2
             if denominator != 0:
                 new_slope = (self.n * self.Sxy - self.Sx * self.Sy) / denominator
-                if self.n>4:
+                if self.n>2:
                     current_angle = math.atan(self.slope)
                     new_angle = math.atan(new_slope)
                     angle_diff = abs(current_angle - new_angle)
 
-                    base_threshold = math.radians(30)
-                    k = 0.1
-                    min_angle_tolerance = math.radians(8)  
+                    base_threshold = math.radians(self.starting_angle_tolerance)
+                    k = self.slope_learning_rate
+                    min_angle_tolerance = math.radians(self.angle_tolerance)  
                     tolerance = max(min_angle_tolerance, base_threshold * math.exp(-k * (self.n - 2)))
 
                     if angle_diff > tolerance:
@@ -52,8 +55,7 @@ class IncrementalLinearRegression:
                 self.intercept = (self.Sy - self.slope * self.Sx) / self.n
             
         if self.n > 2:
-            if (self.in_boundary(x,y))==False:
-                self.update_end_points(x,y)
+            self.update_end_points(x,y)
         else:
             self.end_points[1] = (x,y)
         
@@ -83,62 +85,136 @@ class IncrementalLinearRegression:
         index = 0 if distance[0] < distance[1] else 1
         return index
     
-    def slope_difference(self,x,y):
-        index = self.find_relevant_end_point(x,y)
-        slope = (y-self.end_points[index][1])/(x-self.end_points[index][0])
-        slope_difference = abs(slope - self.slope)
-        return slope_difference
-    
-    def in_line_radius(self,x,y):
+    def in_line_radius(self,x,y,multiplier=1):
+        line_radius = self.line_radius*multiplier
         if self.n >= 2:
             if self.in_boundary(x,y):
                 distance = math.sqrt((x - self.predict_x(y)) ** 2 + (y - self.predict(x)) ** 2)
             else:
-                temp = min(math.sqrt((x - self.end_points[0][0]) ** 2 + (y - self.end_points[0][1]) ** 2),math.sqrt((x - self.end_points[1][0]) ** 2 + (y - self.end_points[1][1]) ** 2))
-                distance = max(temp, math.sqrt((x - self.predict_x(y)) ** 2 + (y - self.predict(x)) ** 2) )
+                distance = min(math.sqrt((x - self.end_points[0][0]) ** 2 + (y - self.end_points[0][1]) ** 2),math.sqrt((x - self.end_points[1][0]) ** 2 + (y - self.end_points[1][1]) ** 2))
         else:   
             distance = math.sqrt((x - self.initial_x) ** 2 + (y - self.initial_y) ** 2) 
 
         
-        return distance < self.line_radius
+        return distance < line_radius
         
     def update_end_points(self, x, y):
-        (x0, y0), (x1, y1) = self.end_points
+        if (self.in_boundary(x,y))==False:
+            (x0, y0), (x1, y1) = self.end_points
 
-        if (self.slope ** 2) < 1:
-            new_y = self.predict(x)
-            new_point = (self.predict_x(new_y), new_y)
+            if (self.slope ** 2) < 1:
+                new_y = self.predict(x)
+                new_point = (self.predict_x(new_y), new_y)
 
-            if x < min(x0, x1):
-                index = 0 if x0 < x1 else 1
-                self.end_points[index] = new_point
-            elif x > max(x0, x1):
-                index = 0 if x0 > x1 else 1
-                self.end_points[index] = new_point
-        else:
-            new_x = self.predict_x(y)
-            new_point = (new_x, self.predict(new_x))
+                if x < min(x0, x1):
+                    index = 0 if x0 < x1 else 1
+                    self.end_points[index] = new_point
+                elif x > max(x0, x1):
+                    index = 0 if x0 > x1 else 1
+                    self.end_points[index] = new_point
+            else:
+                new_x = self.predict_x(y)
+                new_point = (new_x, self.predict(new_x))
 
-            if y < min(y0, y1):
-                index = 0 if y0 < y1 else 1
-                self.end_points[index] = new_point
-            elif y > max(y0, y1):
-                index = 0 if y0 > y1 else 1
-                self.end_points[index] = new_point
+                if y < min(y0, y1):
+                    index = 0 if y0 < y1 else 1
+                    self.end_points[index] = new_point
+                elif y > max(y0, y1):
+                    index = 0 if y0 > y1 else 1
+                    self.end_points[index] = new_point
 
     def draw_line(self): 
-        if self.line_item:
-            self.scene.removeItem(self.line_item)
-            self.line_item = None
+        self.erase_line()
 
         wall_pen = QPen(QColor(0, 0, 255), 2)  # Blue
 
         (x0, y0), (x1, y1) = self.end_points
         self.line_item = self.scene.addLine(x0, y0, x1, y1, wall_pen)
+    
+    def erase_line(self):
+        if self.line_item:
+            self.scene.removeItem(self.line_item)
+            self.line_item = None
 
-    #def combine_lines(self,other):
+    def combine_lines(self,other):
+        self.n += other.n
+        self.Sx += other.Sx
+        self.Sy += other.Sy
+        self.Sxx += other.Sxx
+        self.Sxy += other.Sxy
 
-    #def connect_lines(self,other):
+        denominator = self.n * self.Sxx - self.Sx**2
+        if denominator != 0:
+            self.slope = (self.n * self.Sxy - self.Sx * self.Sy) / denominator
+            self.intercept = (self.Sy - self.slope * self.Sx) / self.n
+
+        other.erase_line()
+        self.update_end_points(other.end_points[0][0],other.end_points[0][1])
+        self.update_end_points(other.end_points[1][0],other.end_points[1][1])
+        self.draw_line()
+    
+    def can_combine_lines(self,other):
+        temp_n = self.n + other.n
+        tempSx = self.Sx + other.Sx
+        tempSy = self.Sy + other.Sy
+        tempSxx = self.Sxx + other.Sxx
+        tempSxy = self.Sxy + other.Sxy
+
+        if temp_n >= 2:
+            denominator = temp_n * tempSxx - tempSx ** 2
+            if denominator != 0:
+                new_slope = (temp_n * tempSxy - tempSx * tempSy) / denominator
+
+                self_current_angle = math.atan(self.slope)
+                other_current_angle = math.atan(other.slope)
+                new_angle = math.atan(new_slope)
+                self_angle_diff = abs(self_current_angle - new_angle)
+                other_angle_diff = abs(other_current_angle - new_angle)
+
+                base_threshold = math.radians(self.starting_angle_tolerance)
+                k = self.slope_learning_rate
+                min_angle_tolerance = math.radians(self.angle_tolerance)
+                tolerance = max(min_angle_tolerance, base_threshold * math.exp(-k * (temp_n - 2)))
+
+                if self_angle_diff > tolerance or other_angle_diff >tolerance:
+                    return False
+        
+        return True
+    
+    # returns true if the "other" line is merged into the "self" line
+    def connect_lines(self, other):
+        min_distance = float('inf')
+        closest_pair = None
+
+        for end_self in self.end_points:
+            for end_other in other.end_points:
+                distance = math.sqrt((end_self[0] - end_other[0]) ** 2 + (end_self[1] - end_other[1]) ** 2)
+                if distance < min_distance:
+                    min_distance = distance
+                    closest_pair = (end_self, end_other)
+        
+        if self.in_line_radius(closest_pair[1][0],closest_pair[1][1]):
+            if self.can_combine_lines(other):
+                self.combine_lines(other)
+                return True
+            
+        if other.n<2 and self.n<2:
+            return False
+        
+        if self.slope == other.slope:
+            return False
+
+        # Calculate intersection point of two lines: y = m1*x + c1 and y = m2*x + c2
+        try:
+            x_intersect = (other.intercept - self.intercept) / (self.slope - other.slope)
+            y_intersect = self.slope * x_intersect + self.intercept
+            intersection_point = (x_intersect, y_intersect)
+        except ZeroDivisionError:
+            return False
+        if self.in_line_radius(intersection_point[0],intersection_point[1],multiplier=2) and other.in_line_radius(intersection_point[0],intersection_point[1],multiplier = 2) and other.n>5 and self.n>5:
+            self.add_point(intersection_point[0],intersection_point[1])
+            other.add_point(intersection_point[0],intersection_point[1])
+        return False
 
 
 class DataConnection(QObject):
@@ -278,14 +354,28 @@ class MinimapApp(QMainWindow):
         matched = False
         for line in self.lines:
             if line.in_line_radius(x, y):
-                temp = line.add_point(x, y)
-                if temp:
-                    matched = True
+                matched = True
+                line.add_point(x, y)
+                
 
         if not matched:
             new_line = IncrementalLinearRegression(start_point_x=x,start_point_y=y,scene=self.scene)
             new_line.add_point(x, y)
             self.lines.append(new_line)
+
+        resolved_lines = []
+        i =0
+        while len(resolved_lines)<len(self.lines):
+            j = i+1
+            while j<len(self.lines):
+                removed = self.lines[i].connect_lines(self.lines[j])
+                if removed:
+                    self.lines.pop(j)
+                else:
+                    j=j+1
+            resolved_lines.append(self.lines[i])
+            i+=1
+        self.lines = resolved_lines
 
         # Draw person trail (green)
         if len(self.person_trail) > 1:
