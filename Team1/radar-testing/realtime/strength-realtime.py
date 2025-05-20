@@ -51,14 +51,18 @@ def update(_):
         dists_now = list(map(lambda x: float(x) / 1000.0, m[4:9]))
         strengths_now = list(map(int, m[13:18]))
 
+        print(list(zip(dists_now, strengths_now)), file=sys.stderr)
+        #print(m, file=sys.stderr)
+
         if len(times) == 0:
             times.append(int(m[3]))
         times.append(int(m[3]))
 
         sorted_dists = np.sort(list(zip(dists_now, strengths_now)), axis=0)
+        print(sorted_dists, file=sys.stderr) 
         for d, sd in zip(dists, sorted_dists):
             if sd[0] == 1e5 and len(d) > 0: d.append(d[-1])
-            elif sd[0] == 1e5: d.append([0, 0])
+            elif sd[0] == 1e5 or sd[1] < -40000: d.append([0, 0])
             else:            d.append(sd)
         
         
@@ -71,10 +75,12 @@ def update(_):
 
     if len(dists[0]) > 6:
         print("\b" * 100, end="", file=sys.stderr)
-        print("strength: {:05f}\tdistance: {:05f}".format( np.abs(dists[0][-1][1]), dists[0][-1][0]), end="", file=sys.stderr)
+        #print("strength: {:05f}\tdistance: {:05f}".format( np.abs(dists[0][-1][1]), dists[0][-1][0]), end="", file=sys.stderr)
     sys.stderr.flush()
     for line, dist in zip(lines, dists):
-        line.set_data(np.transpose(dist)[0], np.abs(np.transpose(dist)[1]))
+        if len(dist) == 0: continue
+
+        line.set_data(np.transpose(dist)[1], np.abs(np.transpose(dist)[0]))
     ax.relim()
     ax.autoscale_view()
 
