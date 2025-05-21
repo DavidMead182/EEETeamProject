@@ -26,6 +26,7 @@ class IncrementalLinearRegression:
         self.angle_tolerance = 1
         self.starting_angle_tolerance = 90
         self.slope_learning_rate = 1
+        self.number_of_points_for_established_trend = 10
 
     def add_point(self, x, y):
         self.n += 1
@@ -55,7 +56,7 @@ class IncrementalLinearRegression:
                 self.intercept = (self.Sy - self.slope * self.Sx) / self.n
             
         if self.n > 2:
-            self.update_end_points(x,y,self.n>10)
+            self.update_end_points(x,y,self.n>self.number_of_points_for_established_trend)
         else:
             self.end_points[1] = (x,y)
         
@@ -115,7 +116,7 @@ class IncrementalLinearRegression:
                 new_angle = math.atan(slope_to_new_point)
                 angle_diff = abs(current_angle - new_angle)
 
-                if angle_diff<math.radians(45):
+                if angle_diff<math.radians(60):
                     accept = True
 
             if not established_trend or accept:
@@ -310,11 +311,11 @@ class MinimapApp(QMainWindow):
                 self.radar_data.append((data["yaw"], data["distance"]))
                 print(f"Added radar point: yaw={data['yaw']}, distance={data['distance']}")  # Debug
                 
-            # # Keep only recent data
-            # if len(self.imu_data) > 100:
-            #     self.imu_data.pop(0)
-            # if len(self.radar_data) > 100:
-            #     self.radar_data.pop(0)
+        
+            if len(self.imu_data) > 100:
+               self.imu_data.pop(0)
+            if len(self.radar_data) > 100:
+                self.radar_data.pop(0)
                 
             # Update position based on IMU (simplified)
             self.current_yaw = data["yaw"]
