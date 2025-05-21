@@ -33,9 +33,9 @@ void loop() {
     if (!packet.valid) { Serial.println("invalid packet"); return; }
 
     Serial.print(packet.yaw);
-    Serial.print(",");
+    Serial.print("\t");
     Serial.print(timestamp);
-    Serial.print(",");
+    Serial.print("\t");
 
     int n = 9;
     uint32_t distances[n]; 
@@ -51,33 +51,33 @@ void loop() {
             Serial.print(distances[i]);
         }
         
-        Serial.print(",");
+        Serial.print("\t");
     }
 
     for (int i = 0; i < n; i++) {
         Serial.print(strengths[i]);
 
-        if (i != n-1) { Serial.print(","); }
+        if (i != n-1) { Serial.print("\t"); }
     }
 
     Serial.print(packet.x_rate);
-    Serial.print(","); 
+    Serial.print("\t"); 
     Serial.print(packet.y_rate);
-    Serial.print(","); 
+    Serial.print("\t"); 
     Serial.print(packet.z_rate);
-    Serial.print(","); 
+    Serial.print("\t"); 
     Serial.print(packet.x_acc);
-    Serial.print(","); 
+    Serial.print("\t"); 
     Serial.print(packet.y_acc); 
-    Serial.print(","); 
+    Serial.print("\t"); 
     Serial.print(packet.z_acc);
-    Serial.print(","); 
+    Serial.print("\t"); 
     Serial.print(packet.temp);
-    Serial.print(","); 
+    Serial.print("\t"); 
     Serial.print(packet.roll);
-    Serial.print(","); 
+    Serial.print("\t"); 
     Serial.print(packet.pitch);
-    Serial.print(","); 
+    Serial.print("\t"); 
     Serial.print(packet.yaw);
     Serial.print("\n"); 
 
@@ -95,4 +95,4 @@ void loop() {
 
 
 // LOGGING FORMAT:
-// MAGX,MAGY,MAGZ,TIMESTAMP,DISTANCE0,DISTANCE1...DISTANCE8,STRENGTH0,STRENGTH1...STRENGTH8 \n
+// YAW TIMESTAMP DISTANCE0 DISTANCE1...DISTANCE8 STRENGTH0 STRENGTH1...STRENGTH8 XR YR ZR XA YA ZA T ROLL PITCH YAW \n
