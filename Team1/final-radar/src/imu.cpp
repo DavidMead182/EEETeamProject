@@ -3,7 +3,7 @@
 #include <SPI.h>
 
 #define NRST        8 
-#define DATA_READY  9
+#define DATA_READY  7
 #define CS          10
 #define PACKET_SIZE 26
 
@@ -30,17 +30,22 @@ void query_imu(uint8_t *buf) {
 }
 
 void imu_setup() {
-    pinMode(NRST, OUTPUT); //puts IMU in reset mode
-    digitalWrite(NRST, LOW);
-    delay(100);
-
-    pinMode(DATA_READY, INPUT_PULLUP);  // Defines dataready pin as input with pullup
-
+    pinMode(NRST, OUTPUT);
+    pinMode(DATA_READY, OUTPUT);
     pinMode(CS, OUTPUT);
-    digitalWrite(CS, HIGH);  // CS high to disable SPI on IMU
 
-    digitalWrite(NRST, HIGH);  // pull reset high to stop resetting 
-    delay(1000);  // Let IMU boot
+    digitalWrite(NRST, LOW);
+    digitalWrite(DATA_READY, HIGH);
+    digitalWrite(CS, HIGH);
+
+    delay(1000);     // wait for master boot sequence
+
+    digitalWrite(NRST, HIGH);
+
+    delay(1000);     // wait for t_reset
+
+    digitalWrite(DATA_READY, LOW);
+
 
     SPI.begin();
     SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE3)); //1Mhz, MSB first

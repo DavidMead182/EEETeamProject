@@ -16,19 +16,21 @@ void setup() {
 
     radar_setup(100, 7000);
     imu_setup();
-    comms_setup();
+    // comms_setup();
 
     delay(1000);
 }
 
 void loop() {
+    // Serial.println("isudhfisudf");
+
     radar_check_errors();
 
     uint64_t timestamp = millis();
 
     imu_packet_t packet;
     imu_read_packet(&packet);
-    if (!packet.valid) { return; }
+    if (!packet.valid) { Serial.println("invalid packet"); return; }
 
     Serial.print(packet.yaw);
     Serial.print(",");
@@ -58,9 +60,28 @@ void loop() {
         if (i != n-1) { Serial.print(","); }
     }
 
+    Serial.print(packet.x_rate);
+    Serial.print(","); 
+    Serial.print(packet.y_rate);
+    Serial.print(","); 
+    Serial.print(packet.z_rate);
+    Serial.print(","); 
+    Serial.print(packet.x_acc);
+    Serial.print(","); 
+    Serial.print(packet.y_acc); 
+    Serial.print(","); 
+    Serial.print(packet.z_acc);
+    Serial.print(","); 
+    Serial.print(packet.temp);
+    Serial.print(","); 
+    Serial.print(packet.roll);
+    Serial.print(","); 
+    Serial.print(packet.pitch);
+    Serial.print(","); 
+    Serial.print(packet.yaw);
     Serial.print("\n"); 
 
-    comms_sensor_data_t comms_data;
+    /* comms_sensor_data_t comms_data;
     comms_data.pitch = packet.pitch;
     comms_data.yaw = packet.yaw;
     comms_data.roll = packet.roll;
@@ -69,7 +90,7 @@ void loop() {
     comms_data.accelZ = packet.z_acc;
     comms_data.timestamp = timestamp;
     comms_data.radarDistance = distances[0];
-    comms_send_data(&comms_data);
+    comms_send_data(&comms_data); */
 }
 
 
