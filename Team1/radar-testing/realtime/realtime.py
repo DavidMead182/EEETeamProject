@@ -53,12 +53,12 @@ def update(_):
 
     while ser.in_waiting:
         m=ser.readline().decode("ascii","ignore").split(",")
-        if len(m) != 22: continue
-        dists_now = list(map(float, m[4:9]))
+        if len(m) != 20: continue
+        dists_now = list(map(float, m[2:7]))
 
         if len(times) == 0:
-            times.append(int(m[3]))
-        times.append(int(m[3]))
+            times.append(int(m[1]))
+        times.append(int(m[1]))
 
         sorted_dists = np.sort(dists_now)
         i = 0

@@ -9,7 +9,7 @@ void setup() {
 
     Wire.begin();
 
-    radar_setup(20, 7000);
+    radar_setup(100, 7000);
 
     imu_setup();
 
@@ -21,7 +21,7 @@ void loop() {
 
     uint64_t timestamp = millis();
 
-    imu_packet packet;
+    imu_packet_t packet;
     imu_read_packet(&packet);
     if (!packet.valid) { return; }
 

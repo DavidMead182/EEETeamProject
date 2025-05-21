@@ -52,7 +52,7 @@ void imu_setup() {
 
 }
 
-void imu_read_packet(imu_packet *packet) { 
+void imu_read_packet(imu_packet_t *packet) { 
     if (!data_ready) {
         packet->valid = false;
         return;
