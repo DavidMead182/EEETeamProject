@@ -269,14 +269,14 @@ class MinimapApp(QMainWindow):
         
         # Data storage
         self.radar_data = []
-        self.imu_data = []
+        self.data = []
         self.person_trail = []
         self.current_position = QPointF(0, 0)  # Start at center
         self.current_yaw = 0
         self.packet_count = 0
         self.lost_packets = 0
         self.person_graphics = []
-        self.prev_point = None
+        self.start = False
 
         # Connection
         self.connection = None
@@ -293,53 +293,104 @@ class MinimapApp(QMainWindow):
         self.connection.data_received.connect(self.process_data)
         self.connection.connect()
         self.status_label.setText("Connected")
+
+    
+    def update_position(self):
+        """
+        Estimate position based on sensor reading.
+        This is a dead reckoning approach that uses accelerometer data.
+        """
+        if self.packet_count == 1:
+            return
+        
+        prev_x,prev_y = self.current_position.x(),self.current_position.y()
+
+        index = min(100,self.packet_count)
+        # Get time interval
+        dt = (self.data[index-1]['timestamp'] - self.data[index-2]['timestamp']) / 1000.0  # Convert to seconds
+        # Use accelerometer data to improve position estimate
+        curr_reading = self.data[index-1]
+        print(curr_reading)
+            
+        # If we have acceleration data available
+        if 'accel_x' in curr_reading and 'accel_y' in curr_reading:
+            # Convert accelerations from IMU frame to world frame
+            heading_rad = math.radians(curr_reading['yaw'])
+                
+            # IMU acceleration is relative to the IMU heading
+            # accel_x is lateral (left/right) in the IMU frame
+            # accel_y is forward/backward in the IMU frame
+            world_accel_x = (curr_reading['accel_y'] * math.cos(heading_rad) - 
+                                curr_reading['accel_x'] * math.sin(heading_rad))
+            world_accel_y = (curr_reading['accel_y'] * math.sin(heading_rad) + 
+                                curr_reading['accel_x'] * math.cos(heading_rad))
+                
+            # Simple double integration for position (with damping)
+            dx = world_accel_x * 0.5 * dt * dt
+            dy = world_accel_y * 0.5 * dt * dt
+                
+            # Mix with basic dead reckoning for stability
+            speed = 0.5  # meters per second
+            dr_dx = speed * dt * math.cos(heading_rad)
+            dr_dy = speed * dt * math.sin(heading_rad)
+                
+            # Weighted combination (mostly rely on dead reckoning for stability)
+            dx = 0.2 * dx + 0.8 * dr_dx
+            dy = 0.2 * dy + 0.8 * dr_dy
+        else:
+            # Fallback to simple dead reckoning
+            heading_rad = math.radians(curr_reading['yaw'])
+            speed = 0.5  # meters per second
+            dx = speed * dt * math.cos(heading_rad)
+            dy = speed * dt * math.sin(heading_rad)
+            
+        # Calculate new position
+        new_x = prev_x + dx
+        new_y = prev_y + dy
+            
+        self.current_position = QPointF(new_x, new_y)
+        self.person_trail.append(QPointF(new_x, new_y))
         
     def process_data(self, data):
         """Process incoming JSON data"""
-        try:
-            # Update packet counters
-            self.packet_count += 1
-            self.lost_packets += data.get("packets_lost", 0)
-            self.data_count_label.setText(f"Packets: {self.packet_count}")
-            self.lost_count_label.setText(f"Lost: {self.lost_packets}")
-            
-            # Store IMU data
-            self.imu_data.append(data)
-            
-            # Store radar distance if valid
-            if "distance" in data and 0 < data["distance"] < 1000:
-                self.radar_data.append((data["yaw"], data["distance"]))
-                print(f"Added radar point: yaw={data['yaw']}, distance={data['distance']}")  # Debug
+        if self.start==True:
+            try:
+                # Update packet counters
+                self.packet_count += 1
+                self.lost_packets += data.get("packets_lost", 0)
+                self.data_count_label.setText(f"Packets: {self.packet_count}")
+                self.lost_count_label.setText(f"Lost: {self.lost_packets}")
                 
-        
-            if len(self.imu_data) > 100:
-               self.imu_data.pop(0)
-            if len(self.radar_data) > 100:
-                self.radar_data.pop(0)
+                # Store IMU data
+                self.data.append(data)
                 
-            # Update position based on IMU (simplified)
-            self.current_yaw = data["yaw"]
-            movement_x = data.get("accel_x", 0) * 0.5  # Scale factor for visualization
-            movement_y = data.get("accel_y", 0) * 0.5
-            
-            # Convert to global coordinates based on yaw
-            rad = -math.radians(self.current_yaw)
-            new_x = self.current_position.x() + (movement_x * math.cos(rad)) - (movement_y * math.sin(rad))
-            new_y = self.current_position.y() + (movement_x * math.sin(rad)) + (movement_y * math.cos(rad))
-            
-            # Update position
-            self.current_position = QPointF(new_x, new_y)
-            self.person_trail.append(QPointF(new_x, new_y))
-            
-            # Keep trail length reasonable
-            if len(self.person_trail) > 50:
-                self.person_trail.pop(0)
-            
-            self.update_display()
+                # Store radar distance if valid
+                if "distance" in data and 0 < data["distance"] < 1000:
+                    self.radar_data.append((data["yaw"], data["distance"]))
+                    print(f"Added radar point: yaw={data['yaw']}, distance={data['distance']}")  # Debug
+                    
+                if len(self.data) > 100:
+                    self.data.pop(0)
+                if len(self.radar_data) > 100:
+                    self.radar_data.pop(0)
                 
-        except Exception as e:
-            print(f"Error processing data: {e}")
-    
+                self.current_yaw = data["yaw"]
+                self.update_position()
+                
+                # Keep trail length reasonable
+                if len(self.person_trail) > 50:
+                    self.person_trail.pop(0)
+                
+                self.update_display()
+                    
+            except Exception as e:
+                print(f"Error processing data: {e}")
+        else:
+            sequence = data.get("sequence")
+            print(sequence)
+            if sequence==0:
+                self.start = True
+
     def update_display(self):
         """Update the minimap display"""
         
@@ -366,7 +417,6 @@ class MinimapApp(QMainWindow):
                 
 
         if not matched:
-            print("new line")
             new_line = IncrementalLinearRegression(start_point_x=x,start_point_y=y,scene=self.scene)
             new_line.add_point(x, y)
             self.lines.append(new_line)
@@ -495,37 +545,6 @@ class SerialConnection(DataConnection):
             except Exception as e:
                 print(f"Error reading serial data: {e}")
 
-class SimulatedConnection(DataConnection):
-    """Simulated data connection for testing"""
-    def __init__(self):
-        super().__init__()
-        self.counter = 0
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.generate_data)
-        
-    def connect(self):
-        self.timer.start(100)
-        
-    def disconnect(self):
-        self.timer.stop()
-        
-    def generate_data(self):
-        self.counter += 1
-        yaw = (self.counter * 5) % 360
-        distance = 100 + 50 * math.sin(math.radians(self.counter * 10))
-        data = {
-            "sequence": self.counter,
-            "packets_lost": 0,
-            "pitch": 0,
-            "roll": 0,
-            "yaw": yaw,
-            "distance": distance,
-            "accel_x": 0.1 * math.cos(math.radians(self.counter * 5)),
-            "accel_y": 0.1 * math.sin(math.radians(self.counter * 5)),
-            "accel_z": 9.8,
-            "timestamp": self.counter
-        }
-        self.data_received.emit(data)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
