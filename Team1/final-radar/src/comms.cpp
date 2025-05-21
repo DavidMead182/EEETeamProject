@@ -1,20 +1,23 @@
 #include "comms.h"
 
 #include <SPI.h>
-#include <RH_RF95.h>
+#include "RH_RF95.h"
+#include "RHHardwareSPI1.h"
 
-#define RFM95_CS  10    // TODO THIS WILL NEED TO BE CHANGED 
-#define RFM95_RST 9
-#define RFM95_INT 2
+#define RFM95_CS  0 
+#define RFM95_RST 29
+#define RFM95_INT 28
 
 #define RF95_FREQ 868.0
 
 // Singleton instance of the radio driver
-RH_RF95 rf95(RFM95_CS, RFM95_INT);
+RH_RF95 rf95(RFM95_CS, RFM95_INT, hardware_spi1);
 
 // Constants for the simulation
 #define UPDATE_INTERVAL 100    // ms between sensor readings (10Hz)
 #define MAX_SEQUENCE    0xFFF  // 12-bit sequence number (0 to 4095)
+
+#define SPI_BUS SPI1
 
 uint16_t sequence_number = 0;
 
@@ -52,7 +55,7 @@ bool comms_setup() {
     };
 
     rf95.setModemRegisters(&config);
-    rf95.setSpreadingFactor(10);
+    rf95.setSpreadingFactor(7);
     // Set transmitter power
     rf95.setTxPower(23, false);
 
@@ -80,24 +83,30 @@ bool comms_send_data(comms_sensor_data_t *data) {
     dtostrf(data->accelY, 6, 2, accelYStr);
     dtostrf(data->accelZ, 6, 2, accelZStr);
 
+    Serial.println("Converted shite");
+    
     // Format data as a simple string
     // Format: "SEQ:{seq},P:{pitch},R:{roll},Y:{yaw},D:{distance},AX:{accelX},AY:{accelY},AZ:{accelZ},T:{timestamp}"
-    sprintf(dataPacket, "SEQ:%s,P:%s,R:%s,Y:%s,D:%s,AX:%s,AY:%s,AZ:%s,T:%lu",
-            seqHex, pitchStr, rollStr, yawStr, distanceStr,
-            accelXStr, accelYStr, accelZStr, data->timestamp);
-
+    sprintf(dataPacket, "SEQ:%s,P:%s,R:%s,Y:%s,D:%s,AX:%s,AY:%s,AZ:%s,T:%llu",
+        seqHex, pitchStr, rollStr, yawStr, distanceStr,
+        accelXStr, accelYStr, accelZStr, data->timestamp);
+        
     int packetLength = strlen(dataPacket);
-
-    // Serial.print("Sending data: "); 
-    // Serial.println(dataPacket);
-
+    Serial.println("Done the sprintf");
+    Serial.println(packetLength);
+    
     // Send the packet
     rf95.send((uint8_t *)dataPacket, packetLength);
-    rf95.waitPacketSent();
+    Serial.println("Done the packet send");
+    // rf95.waitPacketSent();
+    // Serial.println("Packet sent");
 
+    Serial.println(RH_RF95_MAX_MESSAGE_LEN);
+    
     // Wait for a reply (acknowledgment)
     uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
     uint8_t len = sizeof(buf);
+
 
     if (rf95.waitAvailableTimeout(500)) {
         if (rf95.recv(buf, &len)) {
@@ -111,4 +120,6 @@ bool comms_send_data(comms_sensor_data_t *data) {
         Serial.println("No reply from receiver");
         return false;
     }
+
+    return true;
 }
