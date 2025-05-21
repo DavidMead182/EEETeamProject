@@ -15,8 +15,8 @@ void setup() {
     Wire.begin();
 
     radar_setup(100, 7000);
-
     imu_setup();
+    comms_setup();
 
     delay(1000);
 }
@@ -59,6 +59,17 @@ void loop() {
     }
 
     Serial.print("\n"); 
+
+    comms_sensor_data_t comms_data;
+    comms_data.pitch = packet.pitch;
+    comms_data.yaw = packet.yaw;
+    comms_data.roll = packet.roll;
+    comms_data.accelX = packet.x_acc;
+    comms_data.accelY = packet.y_acc;
+    comms_data.accelZ = packet.z_acc;
+    comms_data.timestamp = timestamp;
+    comms_data.radarDistance = distances[0];
+    comms_send_data(&comms_data);
 }
 
 
