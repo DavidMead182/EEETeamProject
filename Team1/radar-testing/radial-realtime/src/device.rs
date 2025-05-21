@@ -13,6 +13,8 @@ pub fn parse_line(file: &mut File) -> Option<(Vec<f32>, Vec<f32>, f32, u32)> {
         Err(_) => { return None },
     };
 
+    println!("{line}");
+
     let parts: Vec<&str> = line.trim_matches(['\0', '\n']).split(",").collect();
     if parts.len() != 20 { return None; }
 

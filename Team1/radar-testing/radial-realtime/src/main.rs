@@ -60,8 +60,8 @@ fn model(_app: &App) -> Model {
 
             // log pattern: 
             // distance0 distance1 ... distance8 strength0 strength1 ... strength8 heading timestamp
-            println!("{}\t{}\t{heading}\t{timestamp}", distances.iter().map(|f| f.to_string()).collect::<Vec<String>>().join("\t"), strengths.iter().map(|f| f.to_string()).collect::<Vec<String>>().join("\t"));
-            
+            // println!("{}\t{}\t{heading}\t{timestamp}", distances.iter().map(|f| f.to_string()).collect::<Vec<String>>().join("\t"), strengths.iter().map(|f| f.to_string()).collect::<Vec<String>>().join("\t"));
+
             let ping = Ping{ distances, heading };
             if ping.heading.is_nan() { continue; }
             let _ = tx.send(ping);

@@ -3,6 +3,11 @@
 #include <Wire.h>
 #include "radar.h"
 #include "imu.h"
+#include "comms.h"
+
+void print_data(int32_t *strengths) {
+
+}
 
 void setup() {
     Serial.begin(921600);
@@ -50,30 +55,9 @@ void loop() {
     for (int i = 0; i < n; i++) {
         Serial.print(strengths[i]);
 
-        if (i != n-1) Serial.print(",");
+        if (i != n-1) { Serial.print(","); }
     }
 
-    
-
-    /* Serial.print(packet.x_rate);
-    Serial.print(","); 
-    Serial.print(packet.y_rate);
-    Serial.print(","); 
-    Serial.print(packet.z_rate);
-    Serial.print(","); 
-    Serial.print(packet.x_acc);
-    Serial.print(","); 
-    Serial.print(packet.y_acc); 
-    Serial.print(","); 
-    Serial.print(packet.z_acc);
-    Serial.print(","); 
-    Serial.print(packet.temp);
-    Serial.print(","); 
-    Serial.print(packet.roll);
-    Serial.print(","); 
-    Serial.print(packet.pitch);
-    Serial.print(","); 
-    Serial.print(packet.yaw); */
     Serial.print("\n"); 
 }
 
