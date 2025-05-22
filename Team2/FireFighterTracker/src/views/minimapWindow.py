@@ -10,7 +10,7 @@ class MinimapWindow(QWidget):
     def __init__(self,stack,filepath="assets/images/default.jpg"):
         super().__init__()
         self.stack = stack
-        self.setWindowTitle("Firefighter UAV - Processed Page")
+        self.setWindowTitle("Firefighter Tracker - Processed Page")
         self.setWindowIcon(QtGui.QIcon("assets/icons/LOGO.png"))
         self.filepath = filepath
         

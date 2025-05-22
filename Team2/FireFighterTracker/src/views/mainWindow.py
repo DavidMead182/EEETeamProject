@@ -21,7 +21,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         print("Log: Initialising MainWindow")
-        self.setWindowTitle("Firefighter UAV")
+        self.setWindowTitle("Firefighter Tracker")
         self.stack = QStackedWidget()
         self.setCentralWidget(self.stack)
         self.setGeometry(100, 100, 800, 600)
@@ -30,7 +30,7 @@ class MainWindow(QMainWindow):
         self.mainPage = self.initWindow()
 
         self.uploadPage = UploadWindow(self.stack)  # Pass the stack reference
-        self.noPage = NoWindow("Firefighter UAV - No Page", self.stack)  # Pass the stack reference
+        self.noPage = NoWindow("Firefighter Tracker - No Page", self.stack)  # Pass the stack reference
         self.consolePage = Console("Console Page", self.stack)  # Pass the stack reference
 
         self.stack.addWidget(self.mainPage)
@@ -47,7 +47,7 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignCenter)
 
-        titleCard = TitleWidget("Firefighter UAV", "Do you have a floorplan?", "assets/images/SFRS Logo.png")
+        titleCard = TitleWidget("Firefighter Tracker", "Do you have a floorplan?", "assets/images/SFRS Logo.png")
 
         btn_layout = QHBoxLayout()
         btn_layout.setAlignment(Qt.AlignCenter)

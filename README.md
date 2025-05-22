@@ -10,12 +10,17 @@ A desktop application built using **PyQt5** that will track the firefighters thr
 ### Interfacing
 We will use a cable to connect from PC COM port to Team 4 Transceiver, which we will receive json file in the form: 
 
-{
-  P:{pitch},
-  R:{roll},
-  Y:{yaw},
-  D:{distance},
-  T:{timestamp}
+"{
+"sequence": int, 
+"packets_lost": int, 
+"pitch": float, 
+"roll": float, 
+"yaw": float, 
+"distance": float, 
+"accel_x": float, 
+"accel_y": float, 
+"accel_z": float, 
+"timestamp": float
 }
 
 ### Screenshots of App

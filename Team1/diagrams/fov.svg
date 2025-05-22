@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="210mm"
+   height="297mm"
+   viewBox="0 0 210 297"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.4.2 (1:1.4.2+202505120737+ebf0e940d0)"
+   sodipodi:docname="fov.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     inkscape:zoom="1.0036875"
+     inkscape:cx="251.57233"
+     inkscape:cy="382.09105"
+     inkscape:window-width="1920"
+     inkscape:window-height="1011"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs1">
+    <pattern
+       inkscape:collect="always"
+       xlink:href="#Strips1_1.5"
+       preserveAspectRatio="xMidYMid"
+       id="pattern8"
+       patternTransform="matrix(0.35355339,0.35355339,-0.35355339,0.35355339,0,0)"
+       x="0"
+       y="0" />
+    <pattern
+       inkscape:collect="always"
+       xlink:href="#Strips1_1.5"
+       preserveAspectRatio="xMidYMid"
+       id="pattern7"
+       patternTransform="matrix(0.35355339,0.35355339,-0.35355339,0.35355339,0,0)"
+       x="0"
+       y="0" />
+    <pattern
+       inkscape:collect="always"
+       patternUnits="userSpaceOnUse"
+       width="2.5"
+       height="1"
+       patternTransform="translate(0,0) scale(2,2)"
+       preserveAspectRatio="xMidYMid"
+       id="Strips1_1.5"
+       style="fill:#000000"
+       inkscape:stockid="Stripes 02 (2:3)"
+       inkscape:isstock="true"
+       inkscape:label="Stripes 02 (2:3)">
+      <rect
+   style="stroke:none"
+   x="0"
+   y="-0.5"
+   width="1"
+   height="2"
+   id="rect140" />
+
+    </pattern>
+  </defs>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.251814;stroke-linecap:square;stroke-opacity:1"
+       id="rect1"
+       width="8.9209757"
+       height="3.9344459"
+       x="95.003746"
+       y="152.05066" />
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.251814;stroke-linecap:square;stroke-opacity:1"
+       id="rect2"
+       width="3.2174466"
+       height="0.75384408"
+       x="97.944359"
+       y="151.23143" />
+    <path
+       style="fill:#ff0000;fill-opacity:0.666667;stroke:none;stroke-width:1.76573;stroke-linecap:square;stroke-opacity:1"
+       d="m 97.84015,151.11298 3.41151,0.009 51.70409,-52.419809 H 45.327753 Z"
+       id="path3"
+       sodipodi:nodetypes="ccccc" />
+    <path
+       style="fill:#00ff00;fill-opacity:0.533333;stroke:none;stroke-width:0.723248;stroke-linecap:square;stroke-opacity:1"
+       d="m 97.869304,151.15011 3.415266,0.009 7.1827,-52.419813 H 90.410272 Z"
+       id="path4"
+       sodipodi:nodetypes="ccccc" />
+    <rect
+       style="fill:url(#pattern7);fill-opacity:1;stroke:#000000;stroke-width:0.55;stroke-linecap:square;stroke-opacity:1"
+       id="rect4"
+       width="107.81732"
+       height="6.3882089"
+       x="45.238945"
+       y="92.172722" />
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.55;stroke-linecap:square;stroke-opacity:1"
+       id="rect9"
+       width="7.4762163"
+       height="7.4762163"
+       x="73.266914"
+       y="108.51194" />
+    <rect
+       style="fill:url(#pattern8);fill-opacity:1;stroke:#000000;stroke-width:0.55;stroke-linecap:square;stroke-opacity:1"
+       id="rect7"
+       width="7.4762163"
+       height="7.4762163"
+       x="73.266914"
+       y="108.51194" />
+    <text
+       xml:space="preserve"
+       style="font-size:6.35px;font-family:'Clear Sans';-inkscape-font-specification:'Clear Sans';text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:#000000;stroke-width:0.55;stroke-linecap:square;stroke-opacity:1;font-weight:normal;font-style:normal;font-stretch:normal;font-variant:normal"
+       x="115.02692"
+       y="129.87256"
+       id="text9"><tspan
+         sodipodi:role="line"
+         id="tspan9"
+         style="stroke-width:0.55;-inkscape-font-specification:'Clear Sans';font-family:'Clear Sans';font-weight:normal;font-style:normal;font-stretch:normal;font-variant:normal"
+         x="115.02692"
+         y="129.87256" /></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52778px;font-family:'Clear Sans';-inkscape-font-specification:'Clear Sans';text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;fill:none;fill-opacity:1;fill-rule:nonzero;stroke:#000000;stroke-width:0.55;stroke-linecap:square;stroke-opacity:1"
+       x="-4.6899529"
+       y="177.3925"
+       id="text10"
+       transform="rotate(-45.500082)"><tspan
+         sodipodi:role="line"
+         id="tspan10"
+         style="font-size:3.52778px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.55"
+         x="-4.6899529"
+         y="177.3925">FOV too wide</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52777px;font-family:'Clear Sans';-inkscape-font-specification:'Clear Sans';text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:0.55;stroke-linecap:square;stroke-opacity:1"
+       x="-97.96714"
+       y="120.76676"
+       id="text11"
+       transform="rotate(-82.001197)"><tspan
+         sodipodi:role="line"
+         id="tspan11"
+         style="stroke-width:0.55"
+         x="-97.96714"
+         y="120.76676">FOV narrow</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52777px;font-family:'Clear Sans';-inkscape-font-specification:'Clear Sans';text-align:center;writing-mode:lr-tb;direction:ltr;text-anchor:middle;fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:0.55;stroke-linecap:square;stroke-opacity:1"
+       x="102.72852"
+       y="117.58464"
+       id="text12"
+       inkscape:export-filename="fov.pdf"
+       inkscape:export-xdpi="96"
+       inkscape:export-ydpi="96"><tspan
+         sodipodi:role="line"
+         id="tspan12"
+         style="stroke-width:0.55"></tspan></text>
+  </g>
+</svg>

@@ -17,7 +17,7 @@ class NewMapping(QWidget):
     def __init__(self, stack):
         super().__init__()
         self.stack = stack  # Store the reference to the stack
-        self.setWindowTitle("Firefighter UAV - No Page")
+        self.setWindowTitle("Firefighter Tracker - No Page")
         self.setGeometry(100, 100, 800, 600)
         self.setWindowIcon(QtGui.QIcon("assets/icons/LOGO.png"))
         

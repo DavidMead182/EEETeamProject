@@ -11,7 +11,7 @@ class UploadWindow(QWidget):
         super().__init__()
         self.stack = stack
         self.filePath = None  # Initialize filePath to None
-        self.setWindowTitle("Firefighter UAV - Upload Page")
+        self.setWindowTitle("Firefighter Tracker - Upload Page")
         self.setGeometry(100, 100, 800, 600)
         self.initUI()
         self.apply_stylesheet("assets/stylesheets/base.qss")
@@ -21,7 +21,7 @@ class UploadWindow(QWidget):
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignCenter)
 
-        titleCard = TitleWidget("Firefighter UAV", "Upload your floor plan", "assets/images/SFRS Logo.png")
+        titleCard = TitleWidget("Firefighter Tracker", "Upload your floor plan", "assets/images/SFRS Logo.png")
 
         btn_upload = QPushButton("Upload")
         btn_upload.setObjectName("btnYes")
