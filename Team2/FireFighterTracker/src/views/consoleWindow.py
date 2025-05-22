@@ -11,7 +11,7 @@ class Console(QWidget):
     def __init__(self, text, stack):
         super().__init__()
         self.stack = stack
-        self.setWindowTitle("Firefighter UAV - MCU Data Console")
+        self.setWindowTitle("Firefighter Tracker - MCU Data Console")
         self.setGeometry(100, 100, 800, 600)
         self.setWindowIcon(QtGui.QIcon("assets/icons/LOGO.png"))
         
