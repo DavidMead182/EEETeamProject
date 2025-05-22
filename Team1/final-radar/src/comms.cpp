@@ -4,20 +4,20 @@
 #include "RH_RF95.h"
 // #include "RHHardwareSPI1.h"
 
-#define RFM95_CS  0 
-#define RFM95_RST 29
-#define RFM95_INT 28
+#define RFM95_CS  3 
+#define RFM95_RST 4
+#define RFM95_INT 5
 
 #define RF95_FREQ 868.0
 
 // Singleton instance of the radio driver
-RH_RF95 rf95(RFM95_CS, RFM95_INT, hardware_spi1);
+RH_RF95 rf95(RFM95_CS, RFM95_INT);
 
 // Constants for the simulation
 #define UPDATE_INTERVAL 100    // ms between sensor readings (10Hz)
 #define MAX_SEQUENCE    0xFFF  // 12-bit sequence number (0 to 4095)
 
-#define SPI_BUS SPI1
+// #define SPI_BUS SPI1
 
 uint16_t sequence_number = 0;
 

@@ -12,9 +12,9 @@ void setup() {
 
     Wire.begin();
 
+    if (!comms_setup()) { Serial.println("comms failed"); while (true); }
     radar_setup(100, 7000);
     imu_setup();
-    // comms_setup();
 
     delay(1000);
 }
