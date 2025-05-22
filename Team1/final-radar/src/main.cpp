@@ -1,215 +1,96 @@
-/*
-  Example 9: Distance Advanced Settings
-
-  Using the Acconeer XM125 A121 60GHz Pulsed Coherent Radar Sensor.
-
-  This example shows how operate the XM125 when the device is in Distance Reading Mode.
-  The sensor is initialized, then the distance values will print out to the terminal in
-  mm.
-
-  By: Madison Chodikov
-  SparkFun Electronics
-  Date: 2024/1/22
-  SparkFun code, firmware, and software is released under the MIT License.
-    Please see LICENSE.md for further details.
-
-  Hardware Connections:
-  QWIIC --> QWIIC
-
-  Serial.print it out at 115200 baud to serial monitor.
-
-  Feel like supporting our work? Buy a board from SparkFun!
-  https://www.sparkfun.com/products/ - Qwiic XM125 Breakout
-*/
-#include "SparkFun_Qwiic_XM125_Arduino_Library.h"
 #include <Arduino.h>
+#include <arduino-timer.h>
+#include <Wire.h>
+#include "radar.h"
+#include "imu.h"
+#include "comms.h"
 
-SparkFunXM125Distance radarSensor;
+void print_data(int32_t *strengths) {
 
-// I2C default address
-uint8_t i2cAddress = SFE_XM125_I2C_ADDRESS;
-
-// Setup Variables
-uint32_t startVal = 0;
-uint32_t endVal = 0;
-uint32_t numDistances = 9;
-uint32_t calibrateNeeded = 0;
-uint32_t measDistErr = 0;
-uint32_t beginReading = 20;
-uint32_t endReading = 7000;
-
-// Error statuses
-uint32_t errorStatus = 0;
-
-// Distance Variables
-uint32_t distancePeakStrength = 0;
-uint32_t distancePeak = 0;
+}
 
 void setup() {
-    // Start serial
-    Serial.begin(115200);
-    Serial.println("XM125 Example 9: Basic Advanced Settings");
-    // Serial.println("");
+    Serial.begin(921600);
 
     Wire.begin();
 
-    // If begin is successful (0), then start example
-    if (radarSensor.begin(i2cAddress, Wire) == 1)
-    {
-        // Serial.println("Begin");
-    }
-    else // Otherwise, infinite loop
-    {
-        Serial.println("Device failed to setup - Freezing code.");
-        while (1)
-            ; // Runs forever
-    }
-
-    // Distance Sensor Setup
-    // Reset sensor configuration to reapply configuration registers
-    radarSensor.setCommand(SFE_XM125_DISTANCE_RESET_MODULE);
-
-    radarSensor.busyWait();
-
-    // Check error and busy bits
-    radarSensor.getDetectorErrorStatus(errorStatus);
-    if (errorStatus != 0)
-    {
-        Serial.print("Detector status error: ");
-        Serial.println(errorStatus);
-    }
-
-    delay(100);
-
-    // Set Start register
-    if (radarSensor.setStart(beginReading) != 0)
-    {
-        Serial.println("Distance Start Error");
-    }
-    radarSensor.getStart(startVal);
-    // Serial.print("Start Val: ");
-    // Serial.println(startVal);
-
-    delay(100);
-    // Set End register
-    if (radarSensor.setEnd(endReading) != 0)
-    {
-        Serial.println("Distance End Error");
-    }
-    radarSensor.getEnd(endVal);
-    // Serial.print("End Val: ");
-    // Serial.println(endVal);
-    delay(100);
-
-    // Apply configuration
-    if (radarSensor.setCommand(SFE_XM125_DISTANCE_APPLY_CONFIGURATION) != 0)
-    {
-        // Check for errors
-        radarSensor.getDetectorErrorStatus(errorStatus);
-        if (errorStatus != 0)
-        {
-            Serial.print("Detector status error: ");
-            Serial.println(errorStatus);
-        }
-
-        Serial.println("Configuration application error");
-    }
-
-    // Poll detector status until busy bit is cleared
-    if (radarSensor.busyWait() != 0)
-    {
-        Serial.print("Busy wait error");
-    }
-
-    // Check detector status
-    radarSensor.getDetectorErrorStatus(errorStatus);
-    if (errorStatus != 0)
-    {
-        Serial.print("Detector status error: ");
-        Serial.println(errorStatus);
-    }
-
-    // Serial.println();
+    radar_setup(100, 7000);
+    imu_setup();
+    comms_setup();
 
     delay(1000);
 }
 
-// Handy helpful output function
-
-void outputResults(uint sample, uint32_t distance, uint32_t strength, uint64_t timestamp)
-{
-    if (distance == 0)
-        return;
-
-    Serial.print(sample);
-    Serial.print(",");
-    Serial.print(distance);
-    Serial.print(",");
-    Serial.print(strength);
-    Serial.print(",");
-    Serial.print(timestamp);
-
-    Serial.println("");
-}
 void loop() {
-    // Check error bits
-    radarSensor.getDetectorErrorStatus(errorStatus);
-    if (errorStatus != 0)
-    {
-        Serial.print("Detector status error: ");
-        Serial.println(errorStatus);
-    }
+    // if (radar_check_errors() != 0) { return; }
 
-    // Start detector
-    if (radarSensor.setCommand(SFE_XM125_DISTANCE_START_DETECTOR) != 0)
-    {
-        Serial.println("Start detector error");
-    }
-
-    // Poll detector status until busy bit is cleared - CHECK ON THIS!
-    if (radarSensor.busyWait() != 0)
-    {
-        Serial.println("Busy wait error");
-    }
-
-    // Verify that no error bits are set in the detector status register
-    radarSensor.getDetectorErrorStatus(errorStatus);
-    if (errorStatus != 0)
-    {
-        Serial.print("Detector status error: ");
-        Serial.println(errorStatus);
-    }
-
-    // Check MEASURE_DISTANCE_ERROR for measurement failed
-    radarSensor.getMeasureDistanceError(measDistErr);
-    if (measDistErr == 1)
-    {
-        Serial.println("Measure Distance Error");
-    }
-
-    // Recalibrate device if calibration error is triggered
-    radarSensor.getCalibrationNeeded(calibrateNeeded);
-    if (calibrateNeeded == 1)
-    {
-        Serial.println("Calibration Needed - Recalibrating.. ");
-        // Calibrate device (write RECALIBRATE command)
-        radarSensor.setCommand(SFE_XM125_DISTANCE_RECALIBRATE);
-    }
-
-    int maxPeak = 0;
-    uint32_t maxStrength = 0;
-    // Read PeakX Distance and PeakX Strength registers for the number of distances detected
     uint64_t timestamp = millis();
-    for (int i = 0; i < 9; i++) {
-        radarSensor.getPeakDistance(i, distancePeak);
-        radarSensor.getPeakStrength(i, distancePeakStrength);
-        // if (distancePeakStrength > maxStrength) { maxStrength = distancePeakStrength; maxPeak = i; }
+
+    imu_packet_t packet;
+    imu_read_packet(&packet);
+    if (!packet.valid) { Serial.println("invalid packet"); return; }
+
+    Serial.print(packet.yaw);
+    Serial.print("\t");
+    Serial.print(timestamp);
+    Serial.print("\t");
+
+    int n = 9;
+    uint32_t distances[n]; 
+    int32_t  strengths[n];
+
+    /* radar_get_distances(distances, n);
+    radar_get_strengths(strengths, n);
+
+    for (int i = 0; i < n; i++) {
+        if (distances[i] == 0) {
+            Serial.print(1E8);
+        } else {    
+            Serial.print(distances[i]);
+        }
         
-        outputResults(i, distancePeak, UINT32_MAX - distancePeakStrength, timestamp);
+        Serial.print("\t");
     }
 
-    // radarSensor.getPeakDistance(maxPeak, distancePeak);
-    // radarSensor.getPeakStrength(maxPeak, distancePeakStrength);
-    // outputResults(maxPeak, distancePeak, UINT32_MAX - distancePeakStrength);
+    for (int i = 0; i < n; i++) {
+        Serial.print(strengths[i]);
 
+        if (i != n-1) { Serial.print("\t"); }
+    } */
+
+    Serial.print(packet.x_rate);
+    Serial.print("\t"); 
+    Serial.print(packet.y_rate);
+    Serial.print("\t"); 
+    Serial.print(packet.z_rate);
+    Serial.print("\t"); 
+    Serial.print(packet.x_acc);
+    Serial.print("\t"); 
+    Serial.print(packet.y_acc); 
+    Serial.print("\t"); 
+    Serial.print(packet.z_acc);
+    Serial.print("\t"); 
+    Serial.print(packet.temp);
+    Serial.print("\t"); 
+    Serial.print(packet.roll);
+    Serial.print("\t"); 
+    Serial.print(packet.pitch);
+    Serial.print("\t"); 
+    Serial.print(packet.yaw);
+    Serial.print("\n"); 
+
+    comms_sensor_data_t comms_data;
+    comms_data.pitch = packet.pitch;
+    comms_data.yaw = packet.yaw;
+    comms_data.roll = packet.roll;
+    comms_data.accelX = packet.x_acc;
+    comms_data.accelY = packet.y_acc;
+    comms_data.accelZ = packet.z_acc;
+    comms_data.timestamp = timestamp;
+    comms_data.radarDistance = distances[0];
+    if (!comms_send_data(&comms_data)) { Serial.println("Bollocks"); } 
 }
+
+
+// LOGGING FORMAT:
+// YAW TIMESTAMP DISTANCE0 DISTANCE1...DISTANCE8 STRENGTH0 STRENGTH1...STRENGTH8 XR YR ZR XA YA ZA T ROLL PITCH YAW \n

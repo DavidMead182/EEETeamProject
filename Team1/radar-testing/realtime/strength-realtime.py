@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as ani
 from collections import defaultdict, deque
 import numpy as np
-from filter import Filter
 
 # ── args ──────────────────────────────────────────────────────────
 ap = argparse.ArgumentParser()
@@ -20,70 +19,68 @@ plt.style.use("fast")
 fig=plt.figure(figsize=(12, 8))
 ax = fig.add_subplot(111)
 ax.grid(which="both")
-plt.ylabel("distance (m)")
-plt.xlabel("time (ms)")
+plt.xlabel("distance (m)")
+plt.ylabel("strength")
+ax.set_xlim(0, 7.0)
+ax.set_ylim(1, 1e5)
 
-keep = 50
+keep = 20
 lines = []
 dists = []
-dists_filtered = []
 since_update = []
-iir_filters = []
 times = deque(maxlen=keep)
 for i in range(5):
     since_update.append(0)
     dists.append(deque(maxlen=keep))
-    dists[-1].append(0.0)
+    # dists[-1].append(np.array([0.0, 0.0]))
 
-    dists_filtered.append(deque(maxlen=keep))
-    dists_filtered[-1].append(0.0)
-
-    line, = ax.plot([], [], label=f"peak {i}")
+    line, = ax.semilogy([1], [1], '.', label=f"peak {i}")
     lines.append(line)
-    line, = ax.plot([], [], "--", color=line.get_color(), label=f"peak {i} filtered")
-    lines.append(line)
+ax.legend(fontsize="small", loc="upper right")
 
-    iir_filters.append(Filter(10, 2.5))
-
-ax.legend(fontsize="small", loc="upper left")
 
 # ── update func ───────────────────────────────────────────────────
 def update(_):
     global dists
 
     while ser.in_waiting:
-        m=ser.readline().decode("ascii","ignore").split(",")
-        if len(m) != 20: continue
-        dists_now = list(map(float, m[2:7]))
+        line = ser.readline().decode("ascii","ignore")
+        print(line, end="")
+        m=line.split(",")
+        if len(m) != 22: continue
+        dists_now = list(map(lambda x: float(x) / 1000.0, m[4:9]))
+        strengths_now = list(map(int, m[13:18]))
+
+        print(list(zip(dists_now, strengths_now)), file=sys.stderr)
+        #print(m, file=sys.stderr)
 
         if len(times) == 0:
-            times.append(int(m[1]))
-        times.append(int(m[1]))
+            times.append(int(m[3]))
+        times.append(int(m[3]))
 
-        sorted_dists = np.sort(dists_now)
-        i = 0
-        for d, df, f, sd in zip(dists, dists_filtered, iir_filters, sorted_dists):
-            if sd == 1e8: d.append(d[-1]);       since_update[i] += 1
-            else:         d.append(sd / 1000.0); since_update[i]  = 0 
-            
-            df.append(f.filter(d[-1]))
-            i += 1
+        sorted_dists = np.sort(list(zip(dists_now, strengths_now)), axis=0)
+        print(sorted_dists, file=sys.stderr) 
+        for d, sd in zip(dists, sorted_dists):
+            if sd[0] == 1e5 and len(d) > 0: d.append(d[-1])
+            elif sd[0] == 1e5 or sd[1] < -40000: d.append([0, 0])
+            else:            d.append(sd)
+        
         
 
     for i in range(len(dists)):
         if since_update[i] >= keep: 
             n = len(dists[i])
             dists[i].clear()
-            dists_filtered[i].clear()
             dists[i].extend(np.zeros(n))
-            dists_filtered[i].extend(np.zeros(n))
 
-    for i in range(len(dists)):
-        lines[i*2].set_data(times, dists[i])
-        lines[i*2 + 1].set_data(times, dists_filtered[i])
+    if len(dists[0]) > 6:
+        print("\b" * 100, end="", file=sys.stderr)
+        #print("strength: {:05f}\tdistance: {:05f}".format( np.abs(dists[0][-1][1]), dists[0][-1][0]), end="", file=sys.stderr)
+    sys.stderr.flush()
+    for line, dist in zip(lines, dists):
+        if len(dist) == 0: continue
 
-#    for line, dist in zip(lines, dists):
-#        line.set_data(times, dist)
+        line.set_data(np.transpose(dist)[1], np.abs(np.transpose(dist)[0]))
     ax.relim()
     ax.autoscale_view()
 
