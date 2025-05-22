@@ -308,8 +308,8 @@ class MinimapApp(QMainWindow):
             
             # Store radar distance if valid
             if "distance" in data and 0 < data["distance"] < 1000:
-                self.radar_data.append((data["yaw"], data["distance"]))
-                print(f"Added radar point: yaw={data['yaw']}, distance={data['distance']}")  # Debug
+                self.radar_data.append((data["pitch"], data["yaw"], data["distance"]))
+                print(f"Added radar point: pitch={data["pitch"]}, yaw={data['yaw']}, distance={data['distance']}")  # Debug
                 
         
             if len(self.imu_data) > 100:
@@ -346,14 +346,15 @@ class MinimapApp(QMainWindow):
         # Draw radar walls (blue)
         wall_pen = QPen(QColor(0, 0, 255), 2)
         wall_brush = QBrush(QColor(0, 0, 255, 100))  # More opaque blue
-        
-        yaw = self.radar_data[-1][0]
-        distance = self.radar_data[-1][1]
+        pitch= self.radar_data[-1][0]
+        pitch_radians = -math.radians(pitch)
+        yaw = self.radar_data[-1][1]
+        distance = self.radar_data[-1][2]
         # Convert polar to cartesian coordinates (relative to person)
-        rad = -math.radians(yaw)
+        yaw_radians = -math.radians(yaw)
         scaled_distance = distance / 2  # Scale down for better visibility
-        x = self.current_position.x() + scaled_distance * math.cos(rad)
-        y = self.current_position.y() + scaled_distance * math.sin(rad)
+        x = self.current_position.x() + scaled_distance * math.cos(pitch_radians) * math.cos(yaw_radians)
+        y = self.current_position.y() + scaled_distance * math.cos(pitch_radians) * math.sin(yaw_radians)
           
         # Draw wall point (larger size: 10x10 pixels)
         self.scene.addEllipse(x-5, y-5, 10, 10, wall_pen, wall_brush)
@@ -532,7 +533,7 @@ if __name__ == "__main__":
     window = MinimapApp()
     
     # Use simulated connection for demo (shows both person and radar)
-    window.set_connection(SerialConnection(port='COM3', baudrate=115200))
+    window.set_connection(SerialConnection(port='COM9', baudrate=115200))
     
     window.show()
     sys.exit(app.exec_())
