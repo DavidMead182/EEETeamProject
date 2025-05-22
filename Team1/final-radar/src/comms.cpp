@@ -1,4 +1,4 @@
-#include "comms.h"
+/* #include "comms.h"
 
 #include <SPI.h>
 #include "RH_RF95.h"
@@ -123,3 +123,4 @@ bool comms_send_data(comms_sensor_data_t *data) {
 
     return true;
 }
+ */

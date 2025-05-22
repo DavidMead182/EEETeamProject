@@ -12,7 +12,7 @@ void setup() {
 
     Wire.begin();
 
-    radar_setup(100, 7000);
+    // radar_setup(100, 7000);
     imu_setup();
     // comms_setup();
 
@@ -31,10 +31,10 @@ void loop() {
     if (!packet.valid) { Serial.println("invalid packet"); return; }
 
     Serial.print(timestamp);
-    prev_time = timestamp;
+    // prev_time = timestamp;
     Serial.print("\t");
 
-    if (li++ >= 20 && radar_check_errors() == 0) {
+   /*  if (li++ >= 20 && radar_check_errors() == 0) {
         li = 0;
 
         int n = 9;
@@ -50,10 +50,8 @@ void loop() {
                 min_distance = distances[i];
             }
         }
-    }
+    } */
 
-    Serial.print(min_distance);
-    Serial.print("\t");
     Serial.print(packet.x_rate);
     Serial.print("\t"); 
     Serial.print(packet.y_rate);
