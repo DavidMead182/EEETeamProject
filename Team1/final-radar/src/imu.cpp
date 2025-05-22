@@ -58,12 +58,6 @@ void imu_setup() {
 }
 
 void imu_read_packet(imu_packet_t *packet) { 
-    if (!data_ready) {
-        packet->valid = false;
-        return;
-    } else {
-        data_ready = false;
-    }
 
     // timing for operation frequency logging
     unsigned long now_micros = micros();

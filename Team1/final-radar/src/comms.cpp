@@ -2,7 +2,7 @@
 
 #include <SPI.h>
 #include "RH_RF95.h"
-#include "RHHardwareSPI1.h"
+// #include "RHHardwareSPI1.h"
 
 #define RFM95_CS  0 
 #define RFM95_RST 29

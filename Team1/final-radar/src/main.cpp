@@ -5,59 +5,55 @@
 #include "imu.h"
 #include "comms.h"
 
-void print_data(int32_t *strengths) {
-
-}
+unsigned int prev_time;
 
 void setup() {
-    Serial.begin(921600);
+    Serial.begin(115200);
 
     Wire.begin();
 
     radar_setup(100, 7000);
     imu_setup();
-    comms_setup();
+    // comms_setup();
 
     delay(1000);
 }
 
+int li = 0;
+uint32_t min_distance = 10000;
 void loop() {
-    // if (radar_check_errors() != 0) { return; }
+    // Serial.println("Loop start");
 
-    uint64_t timestamp = millis();
+    unsigned int timestamp = millis();
 
     imu_packet_t packet;
     imu_read_packet(&packet);
     if (!packet.valid) { Serial.println("invalid packet"); return; }
 
-    Serial.print(packet.yaw);
-    Serial.print("\t");
     Serial.print(timestamp);
+    prev_time = timestamp;
     Serial.print("\t");
 
-    int n = 9;
-    uint32_t distances[n]; 
-    int32_t  strengths[n];
+    if (li++ >= 20 && radar_check_errors() == 0) {
+        li = 0;
 
-    /* radar_get_distances(distances, n);
-    radar_get_strengths(strengths, n);
+        int n = 9;
+        uint32_t distances[n]; 
+        int32_t  strengths[n];
 
-    for (int i = 0; i < n; i++) {
-        if (distances[i] == 0) {
-            Serial.print(1E8);
-        } else {    
-            Serial.print(distances[i]);
+        radar_get_distances(distances, n);
+        radar_get_strengths(strengths, n);
+
+        min_distance = 10000;
+        for (int i = 0; i < n; i++) {
+            if (distances[i] < min_distance && distances[i] != 0) {
+                min_distance = distances[i];
+            }
         }
-        
-        Serial.print("\t");
     }
 
-    for (int i = 0; i < n; i++) {
-        Serial.print(strengths[i]);
-
-        if (i != n-1) { Serial.print("\t"); }
-    } */
-
+    Serial.print(min_distance);
+    Serial.print("\t");
     Serial.print(packet.x_rate);
     Serial.print("\t"); 
     Serial.print(packet.y_rate);
@@ -70,8 +66,6 @@ void loop() {
     Serial.print("\t"); 
     Serial.print(packet.z_acc);
     Serial.print("\t"); 
-    Serial.print(packet.temp);
-    Serial.print("\t"); 
     Serial.print(packet.roll);
     Serial.print("\t"); 
     Serial.print(packet.pitch);
@@ -79,7 +73,7 @@ void loop() {
     Serial.print(packet.yaw);
     Serial.print("\n"); 
 
-    comms_sensor_data_t comms_data;
+    /* comms_sensor_data_t comms_data;
     comms_data.pitch = packet.pitch;
     comms_data.yaw = packet.yaw;
     comms_data.roll = packet.roll;
@@ -88,7 +82,7 @@ void loop() {
     comms_data.accelZ = packet.z_acc;
     comms_data.timestamp = timestamp;
     comms_data.radarDistance = distances[0];
-    if (!comms_send_data(&comms_data)) { Serial.println("Bollocks"); } 
+    if (!comms_send_data(&comms_data)) { Serial.println("Bollocks"); }  */
 }
 
 

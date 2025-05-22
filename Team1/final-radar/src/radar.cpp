@@ -132,7 +132,7 @@ void radar_get_distances(uint32_t *distances, int nd) {
 }
 
 void radar_get_strengths(int32_t *strengths, int ns) {
-    uint32_t strength;
+    int32_t strength;
     
     for (int i = 0; i < ns; i++) {
         radarSensor.getPeakStrength(i, strength);

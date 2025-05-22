@@ -30,5 +30,4 @@ void radar_get_distances(uint32_t *distances, int nd);
 */
 void radar_get_strengths(int32_t *strengths, int ns);
 
-
 #endif
