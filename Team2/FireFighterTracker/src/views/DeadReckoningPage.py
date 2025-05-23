@@ -35,9 +35,13 @@ class DeadReckoningPage(QWidget):
         left_layout.addWidget(titleCard)
 
         self.btn_load = QPushButton("Load IMU Data File")
+        self.btn_load.setObjectName("btnYes")
         self.btn_start = QPushButton("Start Animation")
+        self.btn_start.setObjectName("btnYes")
         self.btn_reset = QPushButton("Reset Animation")
+        self.btn_reset.setObjectName("btnYes")
         self.btn_back = QPushButton("Back")
+        self.btn_back.setObjectName("btnNo")
 
         for btn in [self.btn_load, self.btn_start, self.btn_reset, self.btn_back]:
             btn.setFont(QFont("Arial", 12))
@@ -109,7 +113,7 @@ class DeadReckoningPage(QWidget):
         self.y_accel_history = []
         self.time_history = []
         self.current_index = 0
-        self.timer.start(100)  # 10 Hz = 0.1s
+        self.timer.start(1)  # 100 Hz = 0.01s
 
 
     def update_plot(self):
@@ -117,7 +121,7 @@ class DeadReckoningPage(QWidget):
             self.timer.stop()
             return
 
-        dt = 0.005  # 10 Hz
+        dt = 0.005 
 
         data = self.imu_data[self.current_index]
 
@@ -125,11 +129,6 @@ class DeadReckoningPage(QWidget):
         ax = (data["xa"] - 1.0) * 9.81
         ay = (data["ya"] - 1.0) * 9.81
 
-
-        # # Track acceleration history
-        # if len(self.x_accel_history) > 10:
-        #     ax -= np.mean(self.x_accel_history[-10:]) * g_to_mps2
-        #     ay -= np.mean(self.y_accel_history[-10:]) * g_to_mps2
 
         self.time_history.append(self.current_index * dt)
         self.x_accel_history.append(ax)

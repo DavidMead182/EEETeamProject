@@ -27,7 +27,9 @@ class RadarPage(QWidget):
         left_layout.addWidget(titleCard)
 
         self.btn_load = QPushButton("Load Radar TSV File")
+        self.btn_load.setObjectName("btnYes")
         self.btn_back = QPushButton("Back")
+        self.btn_back.setObjectName("btnNo")
 
         for btn in [self.btn_load, self.btn_back]:
             btn.setFont(QFont("Arial", 12))
