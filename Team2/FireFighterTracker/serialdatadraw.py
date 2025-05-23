@@ -533,7 +533,7 @@ if __name__ == "__main__":
     window = MinimapApp()
     
     # Use simulated connection for demo (shows both person and radar)
-    window.set_connection(SerialConnection(port='COM9', baudrate=115200))
+    window.set_connection(SerialConnection(port='COM3', baudrate=115200))
     
     window.show()
     sys.exit(app.exec_())
