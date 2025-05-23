@@ -30,8 +30,10 @@ class MainWindow(QMainWindow):
         self.mainPage = self.initWindow()
 
         self.uploadPage = UploadWindow(self.stack)  # Pass the stack reference
-        self.noPage = NoWindow("Firefighter Tracker - No Page", self.stack)  # Pass the stack reference
+        #self.noPage = NoWindow("Firefighter Tracker - No Page", self.stack)  # Pass the stack reference
         self.consolePage = Console("Console Page", self.stack)  # Pass the stack reference
+
+        self.noPage = NewMapping(self.stack)  # Pass the stack reference
 
         self.stack.addWidget(self.mainPage)
         self.stack.addWidget(self.uploadPage)
