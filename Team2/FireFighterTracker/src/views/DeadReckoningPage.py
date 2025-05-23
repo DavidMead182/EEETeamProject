@@ -117,15 +117,20 @@ class DeadReckoningPage(QWidget):
             self.timer.stop()
             return
 
-        dt = 0.1  # 10 Hz
+        dt = 0.005  # 10 Hz
 
         data = self.imu_data[self.current_index]
 
-        # Convert acceleration from mm/s² to m/s²
-        ax = data["xa"] 
-        ay = data["ya"] 
+        g_to_mps2 = 9.81
+        ax = (data["xa"] - 1.0) * 9.81
+        ay = (data["ya"] - 1.0) * 9.81
 
-        # Track acceleration history
+
+        # # Track acceleration history
+        # if len(self.x_accel_history) > 10:
+        #     ax -= np.mean(self.x_accel_history[-10:]) * g_to_mps2
+        #     ay -= np.mean(self.y_accel_history[-10:]) * g_to_mps2
+
         self.time_history.append(self.current_index * dt)
         self.x_accel_history.append(ax)
         self.y_accel_history.append(ay)
@@ -146,8 +151,8 @@ class DeadReckoningPage(QWidget):
         y_vals = [p[1] for p in self.positions]
         self.ax.plot(x_vals, y_vals, marker='o', label="Path (meters)")
         self.ax.set_title("IMU Dead Reckoning Trajectory")
-        self.ax.set_xlabel("X Position (mm)")
-        self.ax.set_ylabel("Y Position (mm)")
+        self.ax.set_xlabel("X Position (m)")
+        self.ax.set_ylabel("Y Position (m)")
         self.ax.grid(True)
         self.ax.legend()
 
