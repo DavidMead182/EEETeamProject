@@ -11,6 +11,8 @@ from views.uploadWindow import UploadWindow
 from views.noWindow import NoWindow
 from views.minimapWindow import MinimapWindow
 from views.consoleWindow import Console
+from views.DeadReckoningPage import DeadReckoningPage
+from views.RadarPage import RadarPage
 import globalVariables
 
 TILE_SIZE = 1  # Size of each tile
@@ -35,10 +37,15 @@ class MainWindow(QMainWindow):
 
         self.noPage = NewMapping(self.stack)  # Pass the stack reference
 
+        self.dead_reckoning_page = DeadReckoningPage(self.stack, "IMU Visualisation")  # Pass the stack reference
+        self.radar_page = RadarPage(self.stack)
+        
         self.stack.addWidget(self.mainPage)
         self.stack.addWidget(self.uploadPage)
         self.stack.addWidget(self.noPage)
         self.stack.addWidget(self.consolePage)
+        self.stack.addWidget(self.dead_reckoning_page)
+        self.stack.addWidget(self.radar_page)
         self.apply_stylesheet("assets/stylesheets/base.qss")
         self.showMaximized()
         print("Log: MainWindow initialised and maximised")
@@ -89,11 +96,27 @@ class MainWindow(QMainWindow):
         btn_console.clicked.connect(self.on_console_button_clicked)
         print("Log: 'Scan USB Port For Device' button created")
 
+        btn_IMU = QPushButton("IMU Demo Page")
+        btn_IMU.setObjectName("btnYes")
+        btn_IMU.setFixedWidth(348)
+        btn_IMU.setFixedHeight(40)
+        btn_IMU.clicked.connect(self.on_IMU_button_clicked)
+        print("Log: 'Scan USB Port For Device' button created")
+
+        btn_RADAR = QPushButton("Radar Demo Page")
+        btn_RADAR.setObjectName("btnYes")
+        btn_RADAR.setFixedWidth(348)
+        btn_RADAR.setFixedHeight(40)
+        btn_RADAR.clicked.connect(self.on_radar_button_clicked)
+        print("Log: 'Scan USB Port For Device' button created")
+
         layout.addWidget(titleCard)
         layout.addLayout(btn_layout)
         layout.addWidget(btn_scan_com, alignment=Qt.AlignCenter)
         layout.addWidget(self.com_port_dropdown, alignment=Qt.AlignCenter)
         layout.addWidget(btn_console, alignment=Qt.AlignCenter)
+        layout.addWidget(btn_IMU, alignment=Qt.AlignCenter)
+        layout.addWidget(btn_RADAR, alignment=Qt.AlignCenter)
 
         central_widget.setLayout(layout)
         print("Log: Main window layout initialised")
@@ -130,7 +153,12 @@ class MainWindow(QMainWindow):
         self.MinimapWindow = NewMapping(self.stack)  # Pass the stack reference
         self.stack.addWidget(self.MinimapWindow)
         self.stack.setCurrentWidget(self.MinimapWindow)
+    
+    def on_IMU_button_clicked(self):
+        self.stack.setCurrentWidget(self.dead_reckoning_page)
 
+    def on_radar_button_clicked(self):
+        self.stack.setCurrentWidget(self.radar_page)
 
     def on_console_button_clicked(self):
         if not globalVariables.COM_PORT:
