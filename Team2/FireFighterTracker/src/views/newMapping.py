@@ -439,6 +439,7 @@ class NewMapping(QWidget):
             self.last_timestamp = timestamp
             
             # Update position
+            self.current_yaw = data.get("yaw", 0)
             self.current_position = QPointF(self.position_x, self.position_y)
             self.person_trail.append(QPointF(self.position_x, self.position_y))
             
