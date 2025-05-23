@@ -13,6 +13,7 @@ from views.minimapWindow import MinimapWindow
 from views.consoleWindow import Console
 from views.DeadReckoningPage import DeadReckoningPage
 from views.RadarPage import RadarPage
+from views.IMURADARTEST import QuickTest
 import globalVariables
 
 TILE_SIZE = 1  # Size of each tile
@@ -39,6 +40,7 @@ class MainWindow(QMainWindow):
 
         self.dead_reckoning_page = DeadReckoningPage(self.stack, "IMU Visualisation")  # Pass the stack reference
         self.radar_page = RadarPage(self.stack)
+        self.test_page = QuickTest(self.stack)
         
         self.stack.addWidget(self.mainPage)
         self.stack.addWidget(self.uploadPage)
@@ -46,6 +48,7 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.consolePage)
         self.stack.addWidget(self.dead_reckoning_page)
         self.stack.addWidget(self.radar_page)
+        self.stack.addWidget(self.test_page)
         self.apply_stylesheet("assets/stylesheets/base.qss")
         self.showMaximized()
         print("Log: MainWindow initialised and maximised")
@@ -110,6 +113,14 @@ class MainWindow(QMainWindow):
         btn_RADAR.clicked.connect(self.on_radar_button_clicked)
         print("Log: 'Scan USB Port For Device' button created")
 
+        
+        btn_RADARTEST = QPushButton("Radar & IMU Demo Page")
+        btn_RADARTEST.setObjectName("btnYes")
+        btn_RADARTEST.setFixedWidth(348)
+        btn_RADARTEST.setFixedHeight(40)
+        btn_RADARTEST.clicked.connect(self.on_test_button_clicked)
+        print("Log: 'Scan USB Port For Device' button created")
+
         layout.addWidget(titleCard)
         layout.addLayout(btn_layout)
         layout.addWidget(btn_scan_com, alignment=Qt.AlignCenter)
@@ -117,6 +128,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(btn_console, alignment=Qt.AlignCenter)
         layout.addWidget(btn_IMU, alignment=Qt.AlignCenter)
         layout.addWidget(btn_RADAR, alignment=Qt.AlignCenter)
+        layout.addWidget(btn_RADARTEST, alignment=Qt.AlignCenter)
 
         central_widget.setLayout(layout)
         print("Log: Main window layout initialised")
@@ -159,6 +171,16 @@ class MainWindow(QMainWindow):
 
     def on_radar_button_clicked(self):
         self.stack.setCurrentWidget(self.radar_page)
+
+    def on_test_button_clicked(self):
+        if not globalVariables.COM_PORT:
+            print("No COM port selected")
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Information)
+            msg.setText("No COM port selected. Please select a COM port first.")
+            msg.exec_()
+            return
+        self.stack.setCurrentWidget(self.test_page)
 
     def on_console_button_clicked(self):
         if not globalVariables.COM_PORT:

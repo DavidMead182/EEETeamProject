@@ -89,6 +89,7 @@ class Console(QWidget):
             
             if not mcu_port:
                 mcu_port = ports[0].device  # Fallback to first port
+            mcu_port = "COM6"  # For testing, replace with actual port
             
             self.serial_connection = serial.Serial(
                 mcu_port,
