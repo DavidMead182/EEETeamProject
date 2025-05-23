@@ -419,31 +419,28 @@ class NewMapping(QWidget):
                 print(f"Added radar point: pitch={data["pitch"]}, yaw={data['yaw']}, distance={data['distance']}")  # Debug
                 
         
-            if len(self.imu_data) > 100:
-               self.imu_data.pop(0)
-            if len(self.radar_data) > 100:
-                self.radar_data.pop(0)
+           # IMU sample with timestamp in milliseconds
+            timestamp = data["timestamp"] / 1000.0  # convert to seconds
+            if self.last_timestamp is not None:
+                dt = timestamp - self.last_timestamp
 
-            now = data.get("timestamp", 0)
-            if self.last_timestamp is None:
-                self.last_timestamp = now
-                return
-            dt = now - self.last_timestamp
+                # Rotate acceleration to global frame if needed
+                accel_x = data["accel_x"]
+                accel_y = data["accel_y"]
 
-                
-            # Update position based on IMU (simplified)
-            self.current_yaw = data["yaw"]
-            movement_x = data.get("accel_x", 0) # Scale factor for visualization
-            movement_y = data.get("accel_y", 0)
-            
-            # Convert to global coordinates based on yaw
-            rad = -math.radians(self.current_yaw)
-            new_x = self.current_position.x() + (movement_x * math.cos(rad)) - (movement_y * math.sin(rad))
-            new_y = self.current_position.y() + (movement_x * math.sin(rad)) + (movement_y * math.cos(rad))
+                # Update velocity
+                self.velocity_x += accel_x * dt
+                self.velocity_y += accel_y * dt
+
+                # Update position
+                self.position_x += self.velocity_x * dt
+                self.position_y += self.velocity_y * dt
+
+            self.last_timestamp = timestamp
             
             # Update position
-            self.current_position = QPointF(new_x, new_y)
-            self.person_trail.append(QPointF(new_x, new_y))
+            self.current_position = QPointF(self.position_x, self.position_y)
+            self.person_trail.append(QPointF(self.position_x, self.position_y))
             
             # Keep trail length reasonable
             if len(self.person_trail) > 50:
