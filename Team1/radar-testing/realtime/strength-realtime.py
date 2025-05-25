@@ -22,7 +22,7 @@ ax.grid(which="both")
 plt.xlabel("distance (m)")
 plt.ylabel("strength")
 ax.set_xlim(0, 7.0)
-ax.set_ylim(1, 1e5)
+ax.set_ylim(-40, 40)
 
 keep = 20
 lines = []
@@ -34,7 +34,7 @@ for i in range(5):
     dists.append(deque(maxlen=keep))
     # dists[-1].append(np.array([0.0, 0.0]))
 
-    line, = ax.semilogy([1], [1], '.', label=f"peak {i}")
+    line, = ax.plot([1], [1], 'x', label=f"peak {i}")
     lines.append(line)
 ax.legend(fontsize="small", loc="upper right")
 
@@ -45,25 +45,22 @@ def update(_):
 
     while ser.in_waiting:
         line = ser.readline().decode("ascii","ignore")
-        print(line, end="")
-        m=line.split(",")
-        if len(m) != 22: continue
-        dists_now = list(map(lambda x: float(x) / 1000.0, m[4:9]))
-        strengths_now = list(map(int, m[13:18]))
+        #print(line, end="")
+        m=line.split("\t")
+        if len(m) != 20: continue
+        dists_now = list(map(lambda x: float(x) / 1000.0, m[1:10]))
+        strengths_now = list(map(int, m[10:19]))
 
-        print(list(zip(dists_now, strengths_now)), file=sys.stderr)
-        #print(m, file=sys.stderr)
+        #print(list(zip(dists_now, strengths_now)), file=sys.stderr)
 
         if len(times) == 0:
-            times.append(int(m[3]))
-        times.append(int(m[3]))
+            times.append(int(m[0]))
+        times.append(int(m[0]))
 
-        sorted_dists = np.sort(list(zip(dists_now, strengths_now)), axis=0)
-        print(sorted_dists, file=sys.stderr) 
-        for d, sd in zip(dists, sorted_dists):
-            if sd[0] == 1e5 and len(d) > 0: d.append(d[-1])
-            elif sd[0] == 1e5 or sd[1] < -40000: d.append([0, 0])
-            else:            d.append(sd)
+        for d, dn, sn in zip(dists, dists_now, strengths_now):
+            if   dn == 1e6 and len(d) > 0: d.append(d[-1])
+            elif dn == 1e6 or sn < -40000: d.append([0, 0])
+            else:                          d.append([dn, sn / 1000.0])
         
         
 
@@ -74,13 +71,13 @@ def update(_):
             dists[i].extend(np.zeros(n))
 
     if len(dists[0]) > 6:
-        print("\b" * 100, end="", file=sys.stderr)
-        #print("strength: {:05f}\tdistance: {:05f}".format( np.abs(dists[0][-1][1]), dists[0][-1][0]), end="", file=sys.stderr)
+        print("\b" * 1000, end="", file=sys.stderr)
+        print("strength: {:09f}   distance: {:09f}".format( dists[0][-1][1], dists[0][-1][0]), end="", file=sys.stderr)
     sys.stderr.flush()
     for line, dist in zip(lines, dists):
         if len(dist) == 0: continue
 
-        line.set_data(np.transpose(dist)[1], np.abs(np.transpose(dist)[0]))
+        line.set_data(np.transpose(dist)[0], np.abs(np.transpose(dist)[1]))
     ax.relim()
     ax.autoscale_view()
 

@@ -45,8 +45,13 @@ void loop() {
 
     radar_pair_t pairs[n];
     for (int i = 0; i < n; i++) {
-        pairs[i].distance = distances[i];
-        pairs[i].strength = strengths[i];
+        if (distances[i] != 0) {
+            pairs[i].distance = distances[i];
+            pairs[i].strength = strengths[i];
+        } else {
+            pairs[i].distance = 1000000;
+            pairs[i].strength = 1000000;
+        }
     }
 
     ace_sorting::shellSortKnuth(pairs, n, [](radar_pair_t a, radar_pair_t b) { return a.distance < b.distance; } );

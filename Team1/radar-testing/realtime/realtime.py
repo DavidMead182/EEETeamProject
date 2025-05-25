@@ -52,18 +52,17 @@ def update(_):
     global dists
 
     while ser.in_waiting:
-        m=ser.readline().decode("ascii","ignore").split(",")
+        m=ser.readline().decode("ascii","ignore").split("\t")
         if len(m) != 20: continue
-        dists_now = list(map(float, m[2:7]))
+        dists_now = list(map(float, m[1:10]))
 
         if len(times) == 0:
             times.append(int(m[1]))
         times.append(int(m[1]))
 
-        sorted_dists = np.sort(dists_now)
         i = 0
-        for d, df, f, sd in zip(dists, dists_filtered, iir_filters, sorted_dists):
-            if sd == 1e8: d.append(d[-1]);       since_update[i] += 1
+        for d, df, f, sd in zip(dists, dists_filtered, iir_filters, dists_now):
+            if sd == 1e6: d.append(d[-1]);       since_update[i] += 1
             else:         d.append(sd / 1000.0); since_update[i]  = 0 
             
             df.append(f.filter(d[-1]))
@@ -80,7 +79,7 @@ def update(_):
 
     for i in range(len(dists)):
         lines[i*2].set_data(times, dists[i])
-        lines[i*2 + 1].set_data(times, dists_filtered[i])
+        #lines[i*2 + 1].set_data(times, dists_filtered[i])
 
 #    for line, dist in zip(lines, dists):
 #        line.set_data(times, dist)
