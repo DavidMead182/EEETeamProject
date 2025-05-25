@@ -70,6 +70,7 @@ void imu_read_packet(imu_packet_t *packet) {
     int16_t *values = (int16_t *) &buf; */
 
     digitalWrite(CS, LOW);
+    // Serial.println("Chip selected");
 
     // send 0x3D00s as the register and request command
     SPI.transfer(0x3D);
